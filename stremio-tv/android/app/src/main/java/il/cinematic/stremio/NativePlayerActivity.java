@@ -3,7 +3,6 @@ package il.cinematic.stremio;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.annotation.SuppressLint;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -33,6 +32,7 @@ import androidx.media3.common.C;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
+import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.ui.PlayerView;
 
@@ -50,7 +50,7 @@ public final class NativePlayerActivity extends Activity {
     static final String EXTRA_VIDEO_ID = "video_id";
     static final String EXTRA_TITLE = "title";
 
-    private static final long FALLBACK_TIMEOUT_MS = 25_000L;
+    private static final long FALLBACK_TIMEOUT_MS = 8_000L;
     private static final long SAVE_INTERVAL_MS = 10_000L;
     private static final long CONTROLS_TIMEOUT_MS = 6_000L;
     private static final long SEEK_STEP_MS = 10_000L;
@@ -127,7 +127,7 @@ public final class NativePlayerActivity extends Activity {
             return;
         }
         if (videoId == null || videoId.isEmpty()) videoId = streamUrl;
-        if (title == null || title.isEmpty()) title = "Cinematic";
+        if (title == null || title.isEmpty()) title = "NUVYRO";
         selectedLanguage = settings().getString(LANGUAGE_KEY, "");
         buildLayout();
         if (selectedLanguage.isEmpty()) handler.post(this::showLanguageMenu);
@@ -171,10 +171,8 @@ public final class NativePlayerActivity extends Activity {
         statusText.setTextSize(20f);
         statusText.setGravity(Gravity.CENTER);
         statusText.setPadding(0, 22, 0, 18);
-        statusText.setText("מכין את הווידאו…");
+        statusText.setText("NUVYRO מכין את הווידאו…");
         statusPanel.addView(statusText);
-        final Button otherPlayer = button("פתח בנגן אחר", view -> openExternalPlayer());
-        statusPanel.addView(otherPlayer);
         final FrameLayout.LayoutParams params = wrapContent(Gravity.CENTER);
         root.addView(statusPanel, params);
     }
@@ -192,7 +190,7 @@ public final class NativePlayerActivity extends Activity {
         topBar.setGravity(Gravity.CENTER_VERTICAL);
         topBar.setPadding(44, 26, 36, 0);
         final TextView brand = new TextView(this);
-        brand.setText("◆");
+        brand.setText("N");
         brand.setTextColor(0xFFE50914);
         brand.setTextSize(25f);
         brand.setPadding(0, 0, 16, 0);
@@ -352,6 +350,9 @@ public final class NativePlayerActivity extends Activity {
         final DefaultRenderersFactory renderers = new DefaultRenderersFactory(this)
             .setEnableDecoderFallback(true);
         exoPlayer = new ExoPlayer.Builder(this, renderers)
+            .setLoadControl(new DefaultLoadControl.Builder()
+                .setBufferDurationsMs(12_000, 50_000, 500, 1_000)
+                .build())
             .setHandleAudioBecomingNoisy(true)
             .build();
         exoPlayer.setTrackSelectionParameters(
@@ -399,7 +400,9 @@ public final class NativePlayerActivity extends Activity {
         playerView.setVisibility(View.GONE);
         vlcView.setVisibility(View.VISIBLE);
         final ArrayList<String> options = new ArrayList<>();
-        options.add("--network-caching=3000");
+        options.add("--network-caching=1000");
+        options.add("--live-caching=1000");
+        options.add("--file-caching=700");
         options.add("--clock-jitter=0");
         options.add("--clock-synchro=0");
         libVlc = new LibVLC(this, options);
@@ -418,7 +421,7 @@ public final class NativePlayerActivity extends Activity {
             } else if (event.type == MediaPlayer.Event.Buffering && !vlcStarted) {
                 showStatus("טוען במצב תאימות…");
             } else if (event.type == MediaPlayer.Event.EncounteredError) {
-                showStatus("המקור לא הצליח להתנגן. נסה מקור אחר או נגן אחר.");
+                showStatus(text("המקור הזה לא מגיב. חזור ובחר מקור אחר.", "This source is not responding. Go back and choose another source."));
             } else if (event.type == MediaPlayer.Event.EndReached) {
                 clearProgress();
             }
@@ -693,17 +696,6 @@ public final class NativePlayerActivity extends Activity {
         finish();
     }
 
-    private void openExternalPlayer() {
-        final Intent intent = new Intent(Intent.ACTION_VIEW)
-            .setDataAndType(Uri.parse(streamUrl), "video/*")
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        if (intent.resolveActivity(getPackageManager()) != null) {
-            startActivity(Intent.createChooser(intent, "בחר נגן"));
-        } else {
-            showStatus("לא נמצא נגן נוסף במכשיר");
-        }
-    }
-
     private void showStatus(String text) {
         runOnUiThread(() -> {
             statusText.setText(text);
@@ -833,7 +825,12 @@ public final class NativePlayerActivity extends Activity {
         button.setOnFocusChangeListener((view, hasFocus) -> {
             if (hasFocus) {
                 lastFocusedControl = view;
+                view.animate().scaleX(1.08f).scaleY(1.08f).setDuration(90L).start();
+                view.setElevation(18f);
                 scheduleControlsHide();
+            } else {
+                view.animate().scaleX(1f).scaleY(1f).setDuration(90L).start();
+                view.setElevation(0f);
             }
         });
         final LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(

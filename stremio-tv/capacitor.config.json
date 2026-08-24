@@ -1,6 +1,6 @@
 {
   "appId": "il.cinematic.stremio",
-  "appName": "Cinematic",
+  "appName": "NUVYRO",
   "webDir": "../stremio-web/build",
   "android": {
     "allowMixedContent": true,

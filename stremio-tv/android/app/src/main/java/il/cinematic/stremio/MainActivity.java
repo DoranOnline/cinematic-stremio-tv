@@ -6,6 +6,7 @@ import android.os.SystemClock;
 import android.content.Intent;
 import android.net.Uri;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.graphics.Color;
 import android.webkit.WebView;
 import android.webkit.WebSettings;
@@ -38,7 +39,7 @@ public class MainActivity extends BridgeActivity {
         webView.setBackgroundColor(Color.rgb(7, 8, 10));
         webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
         webView.getSettings().setUserAgentString(
-            webView.getSettings().getUserAgentString() + " CinematicTV/2.0.0"
+            webView.getSettings().getUserAgentString() + " CinematicTV/2.2.0 NuvyroTV/1.0"
         );
         webView.addJavascriptInterface(new NativeStatusBridge(), "CinematicAndroid");
         webView.requestFocus();
@@ -93,7 +94,7 @@ public class MainActivity extends BridgeActivity {
         if (exitDialogVisible || isFinishing()) return;
         exitDialogVisible = true;
         new AlertDialog.Builder(this)
-            .setTitle("לצאת מ־Cinematic?")
+            .setTitle("לצאת מ־NUVYRO?")
             .setMessage("לחיצה בטעות לא תסגור יותר את האפליקציה.")
             .setNegativeButton("להישאר", null)
             .setPositiveButton("יציאה", (dialog, which) -> finish())
@@ -132,12 +133,30 @@ public class MainActivity extends BridgeActivity {
             case KeyEvent.KEYCODE_DPAD_RIGHT:
                 return "right";
             case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_PAGE_UP:
+            case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_UP:
                 return "up";
             case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_PAGE_DOWN:
+            case KeyEvent.KEYCODE_SYSTEM_NAVIGATION_DOWN:
                 return "down";
             default:
                 return null;
         }
+    }
+
+    @Override
+    public boolean dispatchGenericMotionEvent(MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_SCROLL) {
+            final float vertical = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
+            if (Math.abs(vertical) > 0.1f) {
+                final String direction = vertical > 0f ? "up" : "down";
+                getBridge().getWebView().evaluateJavascript(
+                    String.format(REMOTE_NAVIGATION_SCRIPT, direction), null);
+                return true;
+            }
+        }
+        return super.dispatchGenericMotionEvent(event);
     }
 
     private final class NativeStatusBridge {

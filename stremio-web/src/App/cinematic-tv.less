@@ -1,5 +1,5 @@
 /*
- * Cinematic TV
+ * NUVYRO TV
  * A 10-foot interface tuned for Android TV remotes and tablet touch.
  */
 
@@ -23,7 +23,7 @@
     --primary-accent-color: var(--cinema-red);
     --secondary-accent-color: var(--cinema-red-hot);
     --overlay-color: rgba(255, 255, 255, 0.08);
-    --outer-glow: 0 0 0 0.2rem rgba(255, 255, 255, 0.95), 0 1.1rem 3rem rgba(0, 0, 0, 0.72);
+    --outer-glow: 0 0 0 0.16rem #fff8ed, 0 0 0 0.38rem rgba(229, 9, 20, 0.92), 0 0 2rem rgba(229, 9, 20, 0.62), 0 1.1rem 3rem rgba(0, 0, 0, 0.72);
     --border-radius: 0.45rem;
     --horizontal-nav-bar-size: 5.2rem;
     --vertical-nav-bar-size: 0rem;
@@ -83,6 +83,20 @@
     [class*='horizontal-nav-bar-container'] [class*='logo-container'] {
         width: 12.5rem !important;
         margin-right: 1rem;
+    }
+
+    [class*='horizontal-nav-bar-container'] [class*='logo-container'] svg,
+    [class*='horizontal-nav-bar-container'] [class*='logo-container'] img {
+        display: none !important;
+    }
+
+    [class*='horizontal-nav-bar-container'] [class*='logo-container']::after {
+        content: 'NUVYRO';
+        color: #fff;
+        font-size: 1.12rem;
+        font-weight: 900;
+        letter-spacing: 0.24em;
+        text-shadow: 0 0 1.1rem rgba(229, 9, 20, 0.72);
     }
 
     [class*='vertical-nav-bar-container'] {
@@ -262,6 +276,17 @@
         filter: saturate(1.1) contrast(1.03);
     }
 
+    [class*='meta-item-container']:focus [class*='poster-container']::after,
+    [class*='meta-item-container'].selected [class*='poster-container']::after {
+        content: '';
+        position: absolute;
+        inset: -0.2rem;
+        pointer-events: none;
+        border: 0.18rem solid var(--cinema-red-hot);
+        border-radius: 0.68rem;
+        box-shadow: inset 0 0 0.8rem rgba(229, 9, 20, 0.5), 0 0 1.2rem rgba(229, 9, 20, 0.72);
+    }
+
     [class*='meta-item-container'] [class*='poster-image'] {
         opacity: 1 !important;
     }
@@ -349,7 +374,7 @@
     [tabindex='0']:focus {
         position: relative;
         z-index: 100 !important;
-        outline: 0.2rem solid #fff8ed !important;
+        outline: 0.2rem solid var(--cinema-red-hot) !important;
         outline-offset: 0.12rem !important;
         box-shadow:
             0 0 0 0.18rem rgba(229, 9, 20, 0.58),
@@ -361,7 +386,7 @@
     html.cinematic-native [class*='video-container']:focus,
     html.cinematic-native [class*='meta-item-container']:focus {
         border-radius: 0.65rem !important;
-        outline: 0.22rem solid #fff8ed !important;
+        outline: 0.22rem solid var(--cinema-red-hot) !important;
         outline-offset: 0.14rem !important;
         box-shadow:
             0 0 0 0.22rem rgba(229, 9, 20, 0.72),
@@ -688,7 +713,7 @@
     html.cinematic-native [class*='meta-item-container'].active [class*='poster-container'],
     html.cinematic-native [class*='meta-item-container'].selected [class*='poster-container'] {
         filter: none !important;
-        box-shadow: 0 0 0 0.18rem #fff, 0 0.5rem 1rem rgba(0, 0, 0, 0.55) !important;
+        box-shadow: 0 0 0 0.15rem #fff8ed, 0 0 0 0.38rem rgba(229, 9, 20, 0.96), 0 0 1.4rem rgba(229, 9, 20, 0.68) !important;
     }
 
     // Android TV reports a narrow CSS viewport even on 1080p displays, which
