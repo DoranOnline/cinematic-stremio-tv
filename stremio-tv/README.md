@@ -2,9 +2,11 @@
 
 Android TV and tablet packaging for the custom Stremio Web interface.
 
-Version 0.8 embeds the MIT-licensed Stremio Stream Server and uses AndroidX
-Media3 ExoPlayer for reliable in-app playback on Android TV and tablets. See
-`THIRD_PARTY_NOTICES.md` for attribution.
+Version 0.9 embeds the MIT-licensed Stremio Stream Server and starts playback
+with AndroidX Media3. If a TV decoder or format fails, it automatically retries
+with LibVLC compatibility playback. Loading and failures are shown on screen,
+with an optional external-player escape hatch instead of a silent black screen.
+See `THIRD_PARTY_NOTICES.md` for attribution.
 
 ## Build
 

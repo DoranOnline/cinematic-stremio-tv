@@ -30,3 +30,10 @@ SOFTWARE.
 The ABI-specific binaries were extracted from the corresponding official
 Stremio Mobile v1.2.4 release APKs, which embed stream-server 0.1.8 at the
 same source revision.
+
+## LibVLC for Android
+
+The compatibility playback path uses LibVLC for Android 3.6.0 from VideoLAN.
+LibVLC is distributed under the GNU Lesser General Public License, version 2.1
+or later. Source and license information are available from
+https://code.videolan.org/videolan/libvlcjni and https://www.videolan.org/legal.html.
