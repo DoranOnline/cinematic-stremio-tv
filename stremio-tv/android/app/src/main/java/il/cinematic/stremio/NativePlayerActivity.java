@@ -4,8 +4,10 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -26,6 +28,7 @@ import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.C;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
@@ -82,6 +85,7 @@ public final class NativePlayerActivity extends Activity {
     private boolean usingVlc;
     private boolean vlcStarted;
     private boolean userSeeking;
+    private boolean initialTrackPreferencesApplied;
     private long lastSavedAt;
     private String selectedLanguage;
 
@@ -293,6 +297,11 @@ public final class NativePlayerActivity extends Activity {
         exoPlayer = new ExoPlayer.Builder(this, renderers)
             .setHandleAudioBecomingNoisy(true)
             .build();
+        exoPlayer.setTrackSelectionParameters(
+            exoPlayer.getTrackSelectionParameters().buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                .build()
+        );
         exoPlayer.addListener(new Player.Listener() {
             @Override public void onPlayerError(PlaybackException error) {
                 startVlcFallback("הפורמט דורש נגן תאימות…");
@@ -323,6 +332,7 @@ public final class NativePlayerActivity extends Activity {
         if (usingVlc || isFinishing()) return;
         usingVlc = true;
         vlcStarted = false;
+        initialTrackPreferencesApplied = false;
         showStatus(message);
         if (exoPlayer != null) {
             playerView.setPlayer(null);
@@ -343,7 +353,10 @@ public final class NativePlayerActivity extends Activity {
                 vlcStarted = true;
                 hideStatus();
                 applyPendingResume();
-                applyPreferredTracks();
+                if (!initialTrackPreferencesApplied) {
+                    initialTrackPreferencesApplied = true;
+                    applyPreferredTracks();
+                }
                 scheduleControlsHide();
             } else if (event.type == MediaPlayer.Event.Buffering && !vlcStarted) {
                 showStatus("טוען במצב תאימות…");
@@ -476,7 +489,8 @@ public final class NativePlayerActivity extends Activity {
         final String[] hints = "he".equals(selectedLanguage)
             ? new String[]{"he", "heb", "hebrew", "עברית"}
             : new String[]{"en", "eng", "english"};
-        selectMatchingTrack(vlcPlayer.getSpuTracks(), hints, true);
+        // Subtitles are opt-in. Never surprise the viewer with text on screen.
+        vlcPlayer.setSpuTrack(-1);
         selectMatchingTrack(vlcPlayer.getAudioTracks(), hints, false);
     }
 
@@ -680,6 +694,22 @@ public final class NativePlayerActivity extends Activity {
         final Button button = new Button(this);
         button.setText(label);
         button.setTextSize(16f);
+        button.setTextColor(new ColorStateList(
+            new int[][]{new int[]{android.R.attr.state_focused}, new int[]{}},
+            new int[]{Color.WHITE, 0xFFE8E8EA}
+        ));
+        final GradientDrawable focused = new GradientDrawable();
+        focused.setColor(0xFFE50914);
+        focused.setCornerRadius(18f);
+        focused.setStroke(5, Color.WHITE);
+        final GradientDrawable normal = new GradientDrawable();
+        normal.setColor(0xCC34363D);
+        normal.setCornerRadius(18f);
+        normal.setStroke(2, 0x66FFFFFF);
+        final StateListDrawable states = new StateListDrawable();
+        states.addState(new int[]{android.R.attr.state_focused}, focused);
+        states.addState(new int[]{}, normal);
+        button.setBackground(states);
         button.setFocusable(true);
         button.setMinWidth(128);
         button.setOnClickListener(listener);

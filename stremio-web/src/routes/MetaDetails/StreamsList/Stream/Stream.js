@@ -123,6 +123,12 @@ const Stream = ({ className, videoId, videoReleased, addonName, name, descriptio
             event.preventDefault();
             event.stopPropagation();
 
+            document.querySelectorAll('[data-cinematic-return-focus]')
+                .forEach((element) => element.removeAttribute('data-cinematic-return-focus'));
+            if (event.currentTarget instanceof HTMLElement) {
+                event.currentTarget.setAttribute('data-cinematic-return-focus', 'true');
+            }
+
             if (typeof streamLink !== 'string' || streamLink.length === 0) {
                 toast.show({
                     type: 'error',

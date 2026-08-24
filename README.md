@@ -23,6 +23,14 @@ Download the APK from the latest GitHub Release. Starting with v0.7, the app che
 - First-run Hebrew/English choice is saved for each device.
 - Preferred language is also applied automatically to matching VLC subtitle and audio tracks.
 - Player actions scroll horizontally on smaller tablet screens.
+
+## What v1.2 stabilizes
+
+- Back from playback reliably returns to the same source screen and restores focus.
+- Back on the home screen asks for confirmation instead of closing by accident.
+- Subtitles are disabled by default in both Media3 and LibVLC and remain opt-in.
+- Focus is unmistakable on projectors: white border, red highlight and strong glow.
+- Native player buttons use the same high-contrast focused state.
 - Native-only Stremio desktop/service banners are hidden.
 - Playback links are handed only to an installed Stremio package.
 - Back and profile navigation are remote-friendly.

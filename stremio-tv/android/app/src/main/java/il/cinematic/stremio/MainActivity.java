@@ -1,5 +1,6 @@
 package il.cinematic.stremio;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.content.Intent;
@@ -24,6 +25,7 @@ public class MainActivity extends BridgeActivity {
 
     private final RemoteKeyGate remoteKeyGate = new RemoteKeyGate(110L);
     private AppUpdateManager appUpdateManager;
+    private boolean exitDialogVisible;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,7 +38,7 @@ public class MainActivity extends BridgeActivity {
         webView.setBackgroundColor(Color.rgb(7, 8, 10));
         webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
         webView.getSettings().setUserAgentString(
-            webView.getSettings().getUserAgentString() + " CinematicTV/1.1"
+            webView.getSettings().getUserAgentString() + " CinematicTV/1.2"
         );
         webView.addJavascriptInterface(new NativeStatusBridge(), "CinematicAndroid");
         webView.requestFocus();
@@ -55,7 +57,15 @@ public class MainActivity extends BridgeActivity {
         super.onResume();
         final WebView webView = getBridge() == null ? null : getBridge().getWebView();
         if (webView != null) {
-            webView.post(webView::requestFocus);
+            webView.post(() -> {
+                webView.requestFocus();
+                webView.evaluateJavascript(
+                    "(function(){var e=document.querySelector('[data-cinematic-return-focus]');" +
+                    "if(e){e.focus({preventScroll:true});e.scrollIntoView({block:'center',inline:'center'});return true;}" +
+                    "return false;})()",
+                    null
+                );
+            });
         }
         if (appUpdateManager != null) appUpdateManager.resume();
     }
@@ -81,7 +91,19 @@ public class MainActivity extends BridgeActivity {
             webView.evaluateJavascript("window.location.hash='#/';", null);
             return;
         }
-        finish();
+        showExitConfirmation();
+    }
+
+    private void showExitConfirmation() {
+        if (exitDialogVisible || isFinishing()) return;
+        exitDialogVisible = true;
+        new AlertDialog.Builder(this)
+            .setTitle("לצאת מ־Cinematic?")
+            .setMessage("לחיצה בטעות לא תסגור יותר את האפליקציה.")
+            .setNegativeButton("להישאר", null)
+            .setPositiveButton("יציאה", (dialog, which) -> finish())
+            .setOnDismissListener(dialog -> exitDialogVisible = false)
+            .show();
     }
 
     @Override
