@@ -2,11 +2,15 @@
 
 Android TV and tablet packaging for the custom Stremio Web interface.
 
-Version 0.9 embeds the MIT-licensed Stremio Stream Server and starts playback
+Version 1.0 embeds the MIT-licensed Stremio Stream Server and starts playback
 with AndroidX Media3. If a TV decoder or format fails, it automatically retries
 with LibVLC compatibility playback. Loading and failures are shown on screen,
 with an optional external-player escape hatch instead of a silent black screen.
 See `THIRD_PARTY_NOTICES.md` for attribution.
+
+The TV player includes D-pad controls, play/pause, 10-second seek, timeline,
+audio/subtitle track selection, playback speed, source switching, and local
+resume progress keyed by movie or episode.
 
 ## Build
 

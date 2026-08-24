@@ -36,7 +36,7 @@ public class MainActivity extends BridgeActivity {
         webView.setBackgroundColor(Color.rgb(7, 8, 10));
         webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
         webView.getSettings().setUserAgentString(
-            webView.getSettings().getUserAgentString() + " CinematicTV/0.9"
+            webView.getSettings().getUserAgentString() + " CinematicTV/1.0"
         );
         webView.addJavascriptInterface(new NativeStatusBridge(), "CinematicAndroid");
         webView.requestFocus();
@@ -125,7 +125,7 @@ public class MainActivity extends BridgeActivity {
 
     private final class NativeStatusBridge {
         @JavascriptInterface
-        public boolean openNativePlayer(String streamUrl) {
+        public boolean openNativePlayer(String streamUrl, String videoId, String title) {
             if (streamUrl == null || streamUrl.isEmpty()) return false;
             final Uri uri = Uri.parse(streamUrl);
             if (!"http".equalsIgnoreCase(uri.getScheme()) && !"https".equalsIgnoreCase(uri.getScheme())) {
@@ -134,6 +134,8 @@ public class MainActivity extends BridgeActivity {
             runOnUiThread(() -> {
                 final Intent intent = new Intent(MainActivity.this, NativePlayerActivity.class);
                 intent.putExtra(NativePlayerActivity.EXTRA_STREAM_URL, streamUrl);
+                intent.putExtra(NativePlayerActivity.EXTRA_VIDEO_ID, videoId);
+                intent.putExtra(NativePlayerActivity.EXTRA_TITLE, title);
                 startActivity(intent);
             });
             return true;
