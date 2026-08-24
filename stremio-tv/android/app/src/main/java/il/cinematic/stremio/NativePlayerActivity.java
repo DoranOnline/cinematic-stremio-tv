@@ -12,11 +12,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
@@ -48,6 +50,8 @@ public final class NativePlayerActivity extends Activity {
     private static final long CONTROLS_TIMEOUT_MS = 6_000L;
     private static final long SEEK_STEP_MS = 10_000L;
     private static final String PREFS_NAME = "cinematic_playback_progress";
+    private static final String SETTINGS_NAME = "cinematic_player_settings";
+    private static final String LANGUAGE_KEY = "language";
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private ExoPlayer exoPlayer;
@@ -62,6 +66,14 @@ public final class NativePlayerActivity extends Activity {
     private TextView timeText;
     private SeekBar seekBar;
     private Button playPauseButton;
+    private Button rewindButton;
+    private Button forwardButton;
+    private Button subtitleButton;
+    private Button audioButton;
+    private Button speedButton;
+    private Button sourceButton;
+    private Button languageButton;
+    private View lastFocusedControl;
     private String streamUrl;
     private String videoId;
     private String title;
@@ -71,6 +83,7 @@ public final class NativePlayerActivity extends Activity {
     private boolean vlcStarted;
     private boolean userSeeking;
     private long lastSavedAt;
+    private String selectedLanguage;
 
     private final Runnable progressTicker = new Runnable() {
         @Override
@@ -102,7 +115,9 @@ public final class NativePlayerActivity extends Activity {
         }
         if (videoId == null || videoId.isEmpty()) videoId = streamUrl;
         if (title == null || title.isEmpty()) title = "Cinematic";
+        selectedLanguage = settings().getString(LANGUAGE_KEY, "");
         buildLayout();
+        if (selectedLanguage.isEmpty()) handler.post(this::showLanguageMenu);
     }
 
     private void buildLayout() {
@@ -117,7 +132,15 @@ public final class NativePlayerActivity extends Activity {
         playerView.setUseController(false);
         playerView.setBackgroundColor(Color.TRANSPARENT);
         playerView.setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER);
+        playerView.setClickable(true);
+        playerView.setOnClickListener(view -> showControls(false));
         root.addView(playerView, matchParent());
+
+        vlcView.setClickable(true);
+        vlcView.setOnTouchListener((view, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_UP) showControls(false);
+            return true;
+        });
 
         buildStatusPanel(root);
         buildControlsPanel(root);
@@ -183,22 +206,40 @@ public final class NativePlayerActivity extends Activity {
                 scheduleControlsHide();
             }
             @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
-                if (fromUser) timeText.setText(formatTime(progress) + " / " + formatTime(getDuration()));
+                if (fromUser) {
+                    timeText.setText(formatTime(progress) + " / " + formatTime(getDuration()));
+                    // A TV remote changes SeekBar progress without invoking touch start/stop.
+                    // Seek immediately for D-pad input; touch dragging still commits on release.
+                    if (!userSeeking) seekTo(progress);
+                }
             }
         });
 
+        final HorizontalScrollView actionScroller = new HorizontalScrollView(this);
+        actionScroller.setFillViewport(true);
+        actionScroller.setHorizontalScrollBarEnabled(false);
         final LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         actions.setGravity(Gravity.CENTER);
-        actions.addView(button("↶ 10", view -> seekBy(-SEEK_STEP_MS)));
+        rewindButton = button("↶ 10", view -> seekBy(-SEEK_STEP_MS));
+        actions.addView(rewindButton);
         playPauseButton = button("Pause", view -> togglePlayPause());
         actions.addView(playPauseButton);
-        actions.addView(button("10 ↷", view -> seekBy(SEEK_STEP_MS)));
-        actions.addView(button("כתוביות", view -> showSubtitleMenu()));
-        actions.addView(button("שמע", view -> showAudioMenu()));
-        actions.addView(button("מהירות", view -> showSpeedMenu()));
-        actions.addView(button("מקור אחר", view -> finish()));
-        controlsPanel.addView(actions, matchWidthWrapHeight());
+        forwardButton = button("10 ↷", view -> seekBy(SEEK_STEP_MS));
+        actions.addView(forwardButton);
+        subtitleButton = button("כתוביות", view -> showSubtitleMenu());
+        actions.addView(subtitleButton);
+        audioButton = button("שמע", view -> showAudioMenu());
+        actions.addView(audioButton);
+        speedButton = button("מהירות", view -> showSpeedMenu());
+        actions.addView(speedButton);
+        languageButton = button("שפה", view -> showLanguageMenu());
+        actions.addView(languageButton);
+        sourceButton = button("מקור אחר", view -> finish());
+        actions.addView(sourceButton);
+        actionScroller.addView(actions, matchWidthWrapHeight());
+        controlsPanel.addView(actionScroller, matchWidthWrapHeight());
+        applyControlLabels();
 
         final FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -302,6 +343,7 @@ public final class NativePlayerActivity extends Activity {
                 vlcStarted = true;
                 hideStatus();
                 applyPendingResume();
+                applyPreferredTracks();
                 scheduleControlsHide();
             } else if (event.type == MediaPlayer.Event.Buffering && !vlcStarted) {
                 showStatus("טוען במצב תאימות…");
@@ -332,12 +374,16 @@ public final class NativePlayerActivity extends Activity {
             if (vlcPlayer.isPlaying()) vlcPlayer.pause(); else vlcPlayer.play();
         }
         updatePlayPauseLabel();
-        showControls();
+        showControls(false);
     }
 
     private void seekBy(long deltaMs) {
-        seekTo(Math.max(0L, Math.min(getDuration(), getPosition() + deltaMs)));
-        showControls();
+        final long duration = getDuration();
+        final long target = duration > 0L
+            ? Math.max(0L, Math.min(duration, getPosition() + deltaMs))
+            : Math.max(0L, getPosition() + deltaMs);
+        seekTo(target);
+        showControls(false);
     }
 
     private void seekTo(long positionMs) {
@@ -395,6 +441,63 @@ public final class NativePlayerActivity extends Activity {
             .show();
     }
 
+    private void showLanguageMenu() {
+        final String[] labels = {"עברית", "English"};
+        final String[] codes = {"he", "en"};
+        final int checked = "en".equals(selectedLanguage) ? 1 : 0;
+        new AlertDialog.Builder(this)
+            .setTitle(selectedLanguage.isEmpty() ? "בחר שפה / Choose language" : text("בחירת שפה", "Language"))
+            .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                selectedLanguage = codes[which];
+                settings().edit().putString(LANGUAGE_KEY, selectedLanguage).apply();
+                applyControlLabels();
+                applyPreferredTracks();
+                dialog.dismiss();
+                showControls(false);
+            })
+            .setCancelable(!selectedLanguage.isEmpty())
+            .show();
+    }
+
+    private void applyControlLabels() {
+        if (playPauseButton == null) return;
+        rewindButton.setText(text("↶ 10", "↶ 10"));
+        forwardButton.setText(text("10 ↷", "10 ↷"));
+        subtitleButton.setText(text("כתוביות", "Subtitles"));
+        audioButton.setText(text("שמע", "Audio"));
+        speedButton.setText(text("מהירות", "Speed"));
+        languageButton.setText(text("שפה", "Language"));
+        sourceButton.setText(text("מקור אחר", "Other source"));
+        updatePlayPauseLabel();
+    }
+
+    private void applyPreferredTracks() {
+        if (vlcPlayer == null || selectedLanguage == null || selectedLanguage.isEmpty()) return;
+        final String[] hints = "he".equals(selectedLanguage)
+            ? new String[]{"he", "heb", "hebrew", "עברית"}
+            : new String[]{"en", "eng", "english"};
+        selectMatchingTrack(vlcPlayer.getSpuTracks(), hints, true);
+        selectMatchingTrack(vlcPlayer.getAudioTracks(), hints, false);
+    }
+
+    private void selectMatchingTrack(MediaPlayer.TrackDescription[] tracks, String[] hints, boolean subtitle) {
+        if (tracks == null) return;
+        for (MediaPlayer.TrackDescription track : tracks) {
+            final String name = track.name == null ? "" : track.name.toLowerCase(Locale.ROOT);
+            for (String hint : hints) {
+                if (name.contains(hint)) {
+                    if (subtitle) vlcPlayer.setSpuTrack(track.id);
+                    else vlcPlayer.setAudioTrack(track.id);
+                    return;
+                }
+            }
+        }
+    }
+
+    private String text(String hebrew, String english) {
+        return "en".equals(selectedLanguage) ? english : hebrew;
+    }
+
     private void updateProgressUi() {
         final long duration = getDuration();
         final long position = getPosition();
@@ -407,7 +510,7 @@ public final class NativePlayerActivity extends Activity {
     }
 
     private void updatePlayPauseLabel() {
-        playPauseButton.setText(isPlaying() ? "Pause" : "Play");
+        playPauseButton.setText(isPlaying() ? text("עצור", "Pause") : text("נגן", "Play"));
     }
 
     private long getPosition() {
@@ -445,13 +548,25 @@ public final class NativePlayerActivity extends Activity {
         return getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
     }
 
+    private SharedPreferences settings() {
+        return getSharedPreferences(SETTINGS_NAME, MODE_PRIVATE);
+    }
+
     private String progressKey() {
         return "progress:" + videoId;
     }
 
     private void showControls() {
+        showControls(true);
+    }
+
+    private void showControls(boolean focusControl) {
+        final boolean wasHidden = controlsPanel.getVisibility() != View.VISIBLE;
         controlsPanel.setVisibility(View.VISIBLE);
-        playPauseButton.requestFocus();
+        if (focusControl && (wasHidden || controlsPanel.findFocus() == null)) {
+            final View preferred = lastFocusedControl != null ? lastFocusedControl : playPauseButton;
+            preferred.requestFocus();
+        }
         scheduleControlsHide();
     }
 
@@ -512,8 +627,11 @@ public final class NativePlayerActivity extends Activity {
                 case KeyEvent.KEYCODE_DPAD_DOWN:
                 case KeyEvent.KEYCODE_DPAD_LEFT:
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
-                    if (controlsPanel.getVisibility() != View.VISIBLE) showControls();
-                    else scheduleControlsHide();
+                    if (controlsPanel.getVisibility() != View.VISIBLE || controlsPanel.findFocus() == null) {
+                        showControls(true);
+                        return true;
+                    }
+                    scheduleControlsHide();
                     break;
                 default:
                     break;
@@ -565,6 +683,12 @@ public final class NativePlayerActivity extends Activity {
         button.setFocusable(true);
         button.setMinWidth(128);
         button.setOnClickListener(listener);
+        button.setOnFocusChangeListener((view, hasFocus) -> {
+            if (hasFocus) {
+                lastFocusedControl = view;
+                scheduleControlsHide();
+            }
+        });
         final LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT

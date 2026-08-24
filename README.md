@@ -14,6 +14,15 @@ Download the APK from the latest GitHub Release. Starting with v0.7, the app che
 - Local resume playback with a clear continue/from-start prompt.
 - Back closes the controls first, then returns to the title instead of exiting the app.
 - Built-in updater backed by GitHub Releases.
+
+## What v1.1 improves
+
+- Touching the video on tablets opens the full player overlay.
+- D-pad timeline changes now perform a real seek instead of snapping back.
+- The focused TV button stays selected after an action.
+- First-run Hebrew/English choice is saved for each device.
+- Preferred language is also applied automatically to matching VLC subtitle and audio tracks.
+- Player actions scroll horizontally on smaller tablet screens.
 - Native-only Stremio desktop/service banners are hidden.
 - Playback links are handed only to an installed Stremio package.
 - Back and profile navigation are remote-friendly.
