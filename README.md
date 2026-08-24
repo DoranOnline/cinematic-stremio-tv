@@ -47,6 +47,15 @@ Download the APK from the latest GitHub Release. Starting with v0.7, the app che
 Version 1.3.1 verifies that an update download completed and contains a valid
 Android package before opening the installer, preventing partial-download parse errors.
 
+## What v1.4 polishes
+
+- A brighter blue-black canvas that stays cinematic without crushing detail.
+- Warm, highly readable typography and clearer hierarchy throughout the app.
+- Consistent glass surfaces for settings, search, add-ons, dialogs and streams.
+- Strong projector-friendly focus states and larger remote/touch targets.
+- Responsive TV and tablet layouts with calmer spacing and cleaner cards.
+- A documented visual system in `stremio-web/DESIGN.md` for future screens.
+
 This project does not provide, host, index, or sell media. It is an independent UI shell and is not affiliated with Stremio, Netflix, or HOT.
 
 ## Build

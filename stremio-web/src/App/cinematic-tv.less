@@ -4,14 +4,17 @@
  */
 
 :root {
-    --cinema-black: #0b0d12;
-    --cinema-surface: #171a21;
-    --cinema-surface-raised: #20242d;
+    --cinema-black: #0a0e16;
+    --cinema-surface: #151b27;
+    --cinema-surface-raised: #202938;
     --cinema-red: #e50914;
     --cinema-red-hot: #ff2532;
-    --cinema-text: #f7f7f5;
-    --cinema-muted: #b9bbc1;
+    --cinema-amber: #ffbf5b;
+    --cinema-text: #fffaf1;
+    --cinema-muted: #bfc8d7;
     --cinema-line: rgba(255, 255, 255, 0.12);
+    --cinema-line-strong: rgba(255, 255, 255, 0.24);
+    --cinema-glass: rgba(19, 26, 38, 0.92);
     --cinema-focus: #ffffff;
     --primary-background-color: var(--cinema-black);
     --secondary-background-color: #12151b;
@@ -36,6 +39,17 @@
 
     body {
         color: var(--cinema-text);
+        font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif !important;
+        background:
+            radial-gradient(ellipse at 78% 2%, rgba(54, 83, 132, 0.2), transparent 36rem),
+            linear-gradient(145deg, #101724 0%, var(--cinema-black) 54%, #090c12 100%) !important;
+    }
+
+    @font-face {
+        font-family: 'Plus Jakarta Sans';
+        src: url('../../assets/fonts/PlusJakartaSans.ttf') format('truetype');
+        font-display: swap;
+        font-weight: 200 800;
     }
 
     // Subtle film grain keeps large projector gradients from banding.
@@ -374,6 +388,173 @@
             radial-gradient(circle at 85% 0%, rgba(229, 9, 20, 0.13), transparent 30rem),
             radial-gradient(circle at 8% 50%, rgba(84, 102, 150, 0.08), transparent 34rem),
             var(--cinema-black) !important;
+    }
+
+    // A coherent application layer: pages, controls, cards and feedback all
+    // use the same warm-cinema material instead of inheriting mismatched
+    // upstream Stremio surfaces.
+    [class*='discover-content'] [class*='selectable-inputs-container'],
+    [class*='library-content'] [class*='selectable-inputs-container'],
+    [class*='search-content'] [class*='search-bar-container'] {
+        margin: 0.65rem 1.2rem 0 !important;
+        padding: 0.8rem 1rem !important;
+        border: 1px solid var(--cinema-line) !important;
+        border-radius: 1rem !important;
+        background: rgba(20, 27, 39, 0.84) !important;
+        box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.22) !important;
+    }
+
+    [class*='multiselect-container'],
+    [class*='text-input-container'],
+    [class*='select-input'],
+    [class*='search-bar-container'],
+    input,
+    textarea {
+        color: var(--cinema-text) !important;
+        border: 1px solid var(--cinema-line) !important;
+        border-radius: 0.75rem !important;
+        background: rgba(255, 255, 255, 0.065) !important;
+    }
+
+    [class*='multiselect-container']:hover,
+    [class*='text-input-container']:focus-within,
+    [class*='select-input']:focus-within {
+        border-color: var(--cinema-line-strong) !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    [class*='settings-container'] [class*='section-container'],
+    [class*='addon-container'],
+    [class*='calendar-content'],
+    [class*='meta-preview-container'] {
+        border: 1px solid var(--cinema-line) !important;
+        border-radius: 1rem !important;
+        background: linear-gradient(145deg, rgba(31, 40, 55, 0.94), rgba(16, 22, 32, 0.94)) !important;
+        box-shadow: 0 1rem 2.8rem rgba(0, 0, 0, 0.3) !important;
+    }
+
+    [class*='settings-container'] [class*='section-container'] {
+        margin-bottom: 1rem !important;
+        padding: 1.25rem !important;
+    }
+
+    [class*='settings-container'] [class*='category-container'],
+    [class*='settings-container'] [class*='option-container'],
+    [class*='addon-container'],
+    [class*='stream-container'],
+    [class*='video-container'] {
+        border-radius: 0.75rem !important;
+        transition: background 130ms ease, transform 130ms ease, border-color 130ms ease !important;
+    }
+
+    [class*='settings-container'] [class*='option-container']:hover,
+    [class*='addon-container']:hover,
+    [class*='stream-container']:hover,
+    [class*='video-container']:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    [class*='streams-list'] [class*='stream-container'] {
+        margin: 0.4rem 0.65rem !important;
+        padding: 0.8rem 0.9rem !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        background: rgba(255, 255, 255, 0.045) !important;
+    }
+
+    [class*='streams-list'] [class*='stream-container']:focus {
+        background: rgba(229, 9, 20, 0.18) !important;
+    }
+
+    [class*='videos-list'] [class*='video-container'] {
+        margin: 0.32rem 0.6rem !important;
+        padding: 0.65rem 0.8rem !important;
+        border: 1px solid transparent !important;
+    }
+
+    [class*='videos-list'] [class*='video-container']:focus,
+    [class*='videos-list'] [class*='video-container'].selected {
+        color: #fff !important;
+        border-color: rgba(255, 255, 255, 0.68) !important;
+        background: linear-gradient(90deg, rgba(229, 9, 20, 0.72), rgba(229, 9, 20, 0.2)) !important;
+    }
+
+    [class*='meta-preview'] [class*='chips-container'] [class*='chip-container'],
+    [class*='chips-container'] [class*='chip-container'] {
+        border: 1px solid var(--cinema-line) !important;
+        border-radius: 999px !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    [class*='meta-preview'] [class*='actions-container'] [class*='button-container'],
+    [class*='actions-group'] [class*='button-container'] {
+        min-width: 3.5rem;
+        min-height: 3.5rem;
+        border: 1px solid var(--cinema-line) !important;
+        border-radius: 999px !important;
+        background: rgba(255, 255, 255, 0.09) !important;
+    }
+
+    [class*='meta-preview'] [class*='actions-container'] [class*='button-container']:hover {
+        background: rgba(255, 255, 255, 0.16) !important;
+    }
+
+    [class*='modal-container'],
+    [class*='modal-dialog-container'],
+    [class*='popup-container'],
+    [class*='bottom-sheet-container'] {
+        border-radius: 1.1rem !important;
+        background: var(--cinema-glass) !important;
+        box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.72) !important;
+    }
+
+    [class*='toast-item-container'],
+    [class*='message-container'],
+    [class*='error-container'] {
+        border: 1px solid var(--cinema-line) !important;
+        border-radius: 0.9rem !important;
+        background: rgba(24, 31, 43, 0.96) !important;
+        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.45) !important;
+    }
+
+    [class*='button-container'],
+    button {
+        letter-spacing: -0.01em;
+    }
+
+    [class*='primary-button']::before,
+    [class*='play-button']::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        border-radius: inherit;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.26), transparent 46%);
+    }
+
+    // Tablet: preserve the cinematic composition while increasing touch
+    // targets and avoiding the cramped desktop side panels.
+    @media (max-width: 760px) {
+        [class*='metadetails-content'] [class*='meta-preview'] {
+            max-width: none !important;
+            padding: 1.5rem 1.25rem 2rem !important;
+        }
+
+        [class*='meta-preview'] [class*='title-label'] {
+            font-size: clamp(2.1rem, 11vw, 4.2rem) !important;
+        }
+
+        [class*='metadetails-content'] [class*='videos-list'],
+        [class*='metadetails-content'] [class*='streams-list'] {
+            margin: 0 0.65rem !important;
+            border: 1px solid var(--cinema-line) !important;
+            border-radius: 1rem 1rem 0 0 !important;
+        }
+
+        [class*='button-container'],
+        button,
+        [tabindex='0'] {
+            min-height: 3.25rem;
+        }
     }
 
     @keyframes cinema-row-in {

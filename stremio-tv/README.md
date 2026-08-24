@@ -16,6 +16,11 @@ switching, and local resume progress keyed by movie or episode.
 Version 1.3.1 validates completed update downloads before launching Android's
 installer, preventing partial files from producing package parsing errors.
 
+Version 1.4 introduces a cohesive premium visual system across TV and tablet:
+a brighter blue-black canvas, warmer typography, polished glass surfaces,
+clearer focus states, larger remote/touch targets, and redesigned discovery,
+details, streams, settings, add-ons, search, dialogs, and feedback states.
+
 ## Build
 
 1. Build `../stremio-web` with `corepack pnpm run build`.

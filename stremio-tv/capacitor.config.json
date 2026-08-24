@@ -4,6 +4,6 @@
   "webDir": "../stremio-web/build",
   "android": {
     "allowMixedContent": true,
-    "backgroundColor": "#08090c"
+    "backgroundColor": "#0a0e16"
   }
 }
