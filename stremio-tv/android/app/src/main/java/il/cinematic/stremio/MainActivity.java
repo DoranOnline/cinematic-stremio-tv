@@ -18,6 +18,7 @@ import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private static final int PLAYER_REQUEST_CODE = 2202;
     private static final String REMOTE_NAVIGATION_SCRIPT =
         "(function(direction){" +
         "if(typeof window.navigate==='function'){window.navigate(direction);return true;}" +
@@ -39,7 +40,7 @@ public class MainActivity extends BridgeActivity {
         webView.setBackgroundColor(Color.rgb(7, 8, 10));
         webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
         webView.getSettings().setUserAgentString(
-            webView.getSettings().getUserAgentString() + " CinematicTV/2.2.0 NuvyroTV/1.0"
+            webView.getSettings().getUserAgentString() + " NuvyroTV/2.2.2"
         );
         webView.addJavascriptInterface(new NativeStatusBridge(), "CinematicAndroid");
         webView.requestFocus();
@@ -75,6 +76,18 @@ public class MainActivity extends BridgeActivity {
     public void onDestroy() {
         if (appUpdateManager != null) appUpdateManager.stop();
         super.onDestroy();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != PLAYER_REQUEST_CODE || resultCode != RESULT_OK || data == null ||
+            !data.getBooleanExtra(NativePlayerActivity.EXTRA_PLAYBACK_ENDED, false)) return;
+        final WebView webView = getBridge() == null ? null : getBridge().getWebView();
+        if (webView != null) {
+            webView.post(() -> webView.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('nuvyro-playback-ended'));", null));
+        }
     }
 
     private void handleBackNavigation() {
@@ -172,7 +185,7 @@ public class MainActivity extends BridgeActivity {
                 intent.putExtra(NativePlayerActivity.EXTRA_STREAM_URL, streamUrl);
                 intent.putExtra(NativePlayerActivity.EXTRA_VIDEO_ID, videoId);
                 intent.putExtra(NativePlayerActivity.EXTRA_TITLE, title);
-                startActivity(intent);
+                startActivityForResult(intent, PLAYER_REQUEST_CODE);
             });
             return true;
         }

@@ -91,12 +91,13 @@
     }
 
     [class*='horizontal-nav-bar-container'] [class*='logo-container']::after {
-        content: 'NUVYRO';
-        color: #fff;
-        font-size: 1.12rem;
-        font-weight: 900;
-        letter-spacing: 0.24em;
-        text-shadow: 0 0 1.1rem rgba(229, 9, 20, 0.72);
+        display: none !important;
+        content: none !important;
+    }
+
+    // TV viewers choose an episode first; cast/genre links must not steal D-pad focus.
+    html.cinematic-native [class*='meta-preview'] [class*='meta-links'] {
+        display: none !important;
     }
 
     [class*='vertical-nav-bar-container'] {

@@ -15,7 +15,7 @@ const { t } = require('i18next');
 
 const HorizontalNavBar = React.memo(({ className, route, query, title, backButton, searchBar, fullscreenButton, navMenu, originPath, hdrInfo, ...props }) => {
     const navigate = useNavigate();
-    const isNativeTV = typeof window.CinematicAndroid?.openInStremio === 'function' ||
+    const isNativeTV = typeof window.CinematicAndroid?.openNativePlayer === 'function' ||
         (typeof window.Capacitor?.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
     const backButtonOnClick = React.useCallback(() => {
         if (originPath) {
@@ -40,8 +40,8 @@ const HorizontalNavBar = React.memo(({ className, route, query, title, backButto
                         <Icon className={styles['icon']} name={'chevron-back'} />
                     </Button>
                     :
-                    <div className={styles['logo-container']} aria-label={'Cinematic'}>
-                        <span className={styles['brand-mark']}>C</span>
+                    <div className={styles['logo-container']} aria-label={'NUVYRO'}>
+                        <span className={styles['brand-mark']}>N</span>
                         <span className={styles['brand-name']} aria-hidden={'true'} />
                     </div>
             }

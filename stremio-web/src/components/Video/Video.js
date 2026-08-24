@@ -108,7 +108,7 @@ const Video = ({ className, id, title, thumbnail, season, episode, released, upc
         }, [selected]);
 
         return (
-            <Button {...props} ref={ref} className={classnames(className, styles['video-container'], { [styles['selected']]: selected })} title={title}>
+            <Button {...props} ref={ref} data-nuvyro-episode={'true'} className={classnames(className, styles['video-container'], { [styles['selected']]: selected })} title={title}>
                 {
                     typeof thumbnail === 'string' && thumbnail.length > 0 ?
                         <div className={styles['thumbnail-container']}>

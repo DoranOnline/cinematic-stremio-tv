@@ -17,7 +17,8 @@ const StreamingServerWarning = ({ className }: Props) => {
     const { t } = useTranslation();
     const core = useCore();
     const profile = useProfile();
-    const isCinematicNative = navigator.userAgent.includes('CinematicTV/');
+    const isCinematicNative = navigator.userAgent.includes('NuvyroTV/') ||
+        typeof (window as any).CinematicAndroid?.openNativePlayer === 'function';
 
     const createDismissalDate = (months: number, years = 0): Date => {
         const dismissalDate = new Date();

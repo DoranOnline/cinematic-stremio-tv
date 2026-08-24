@@ -114,6 +114,26 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
                 [];
         return rankSources(candidates, preferredAddons);
     }, [streamsByAddon, selectedAddon, orderedAddonKeys, preferredAddons]);
+
+    React.useEffect(() => {
+        if (!video || filteredStreams.length === 0) return;
+        let pendingVideoId = null;
+        try {
+            pendingVideoId = sessionStorage.getItem('nuvyro.autoplayVideoId');
+        } catch (_) {
+            return;
+        }
+        if (!pendingVideoId || (pendingVideoId !== 'next' && pendingVideoId !== video.id)) return;
+        sessionStorage.removeItem('nuvyro.autoplayVideoId');
+        const timer = window.setTimeout(() => {
+            const firstSource = streamsContainerRef.current?.querySelector('[data-nuvyro-stream="true"]');
+            if (firstSource instanceof HTMLElement) {
+                firstSource.focus({ preventScroll: false });
+                firstSource.click();
+            }
+        }, 350);
+        return () => window.clearTimeout(timer);
+    }, [video, filteredStreams]);
     const selectableOptions = React.useMemo(() => {
         return {
             options: [

@@ -142,7 +142,7 @@ const Stream = ({ className, videoId, videoReleased, addonName, badges, bestMatc
                 return;
             }
 
-            const opened = nativePlayback.openNativePlayer(streamLink, videoId || '', name || description || addonName || 'Cinematic');
+            const opened = nativePlayback.openNativePlayer(streamLink, videoId || '', name || description || addonName || 'NUVYRO');
             if (opened) {
                 return;
             }
@@ -238,7 +238,7 @@ const Stream = ({ className, videoId, videoReleased, addonName, badges, bestMatc
 
     const renderLabel = React.useMemo(() => function renderLabel({ className, children, ...props }) {
         return (
-            <Button className={classnames(className, styles['stream-container'], { [styles['best-match']]: bestMatch })} title={addonName} href={usesCinematicPlayer ? null : href} target={usesCinematicPlayer ? null : target} download={usesCinematicPlayer ? null : download} onClick={onClick} {...props}>
+            <Button data-nuvyro-stream={'true'} className={classnames(className, styles['stream-container'], { [styles['best-match']]: bestMatch })} title={addonName} href={usesCinematicPlayer ? null : href} target={usesCinematicPlayer ? null : target} download={usesCinematicPlayer ? null : download} onClick={onClick} {...props}>
                 <div className={styles['source-rank']}>
                     {bestMatch ? <span className={styles['best-label']} aria-hidden={'true'} /> : null}
                     <span className={styles['provider-label']}>{addonName}</span>

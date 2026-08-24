@@ -3,6 +3,7 @@ package il.cinematic.stremio;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -49,6 +50,7 @@ public final class NativePlayerActivity extends Activity {
     static final String EXTRA_STREAM_URL = "stream_url";
     static final String EXTRA_VIDEO_ID = "video_id";
     static final String EXTRA_TITLE = "title";
+    static final String EXTRA_PLAYBACK_ENDED = "playback_ended";
 
     private static final long FALLBACK_TIMEOUT_MS = 8_000L;
     private static final long SAVE_INTERVAL_MS = 10_000L;
@@ -93,6 +95,7 @@ public final class NativePlayerActivity extends Activity {
     private boolean vlcStarted;
     private boolean userSeeking;
     private boolean initialTrackPreferencesApplied;
+    private boolean playbackEndReported;
     private long lastSavedAt;
     private String selectedLanguage;
     private boolean controlsLocked;
@@ -373,6 +376,7 @@ public final class NativePlayerActivity extends Activity {
             @Override public void onPlaybackStateChanged(int state) {
                 if (state == Player.STATE_BUFFERING) showStatus("טוען וידאו…");
                 if (state == Player.STATE_READY) applyPendingResume();
+                if (state == Player.STATE_ENDED) reportPlaybackEnded();
             }
         });
         playerView.setPlayer(exoPlayer);
@@ -423,7 +427,7 @@ public final class NativePlayerActivity extends Activity {
             } else if (event.type == MediaPlayer.Event.EncounteredError) {
                 showStatus(text("המקור הזה לא מגיב. חזור ובחר מקור אחר.", "This source is not responding. Go back and choose another source."));
             } else if (event.type == MediaPlayer.Event.EndReached) {
-                clearProgress();
+                runOnUiThread(this::reportPlaybackEnded);
             }
         });
         final Media media = new Media(libVlc, Uri.parse(streamUrl));
@@ -438,6 +442,17 @@ public final class NativePlayerActivity extends Activity {
         final long resume = pendingResumeMs;
         pendingResumeMs = 0;
         handler.postDelayed(() -> seekTo(resume), 250L);
+    }
+
+    private void reportPlaybackEnded() {
+        if (playbackEndReported || isFinishing()) return;
+        playbackEndReported = true;
+        clearProgress();
+        final Intent result = new Intent();
+        result.putExtra(EXTRA_PLAYBACK_ENDED, true);
+        setResult(RESULT_OK, result);
+        showStatus(text("עובר לפרק הבא…", "Starting the next episode…"));
+        handler.postDelayed(this::finish, 650L);
     }
 
     private void togglePlayPause() {

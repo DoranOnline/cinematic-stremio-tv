@@ -31,7 +31,7 @@ import java.util.concurrent.Executors;
 final class AppUpdateManager {
     private static final String RELEASE_API =
         "https://api.github.com/repos/DoranOnline/cinematic-stremio-tv/releases/latest";
-    private static final String APK_NAME = "Cinematic-update.apk";
+    private static final String APK_NAME = "NUVYRO-update.apk";
 
     private final MainActivity activity;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -83,7 +83,7 @@ final class AppUpdateManager {
                 connection.setConnectTimeout(6000);
                 connection.setReadTimeout(6000);
                 connection.setRequestProperty("Accept", "application/vnd.github+json");
-                connection.setRequestProperty("User-Agent", "Cinematic-TV-Android");
+                connection.setRequestProperty("User-Agent", "NUVYRO-TV-Android");
                 if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
                     return;
                 }
@@ -142,7 +142,7 @@ final class AppUpdateManager {
         if (downloadedApk.exists()) downloadedApk.delete();
 
         final DownloadManager.Request request = new DownloadManager.Request(Uri.parse(apkUrl))
-            .setTitle("Cinematic TV update")
+            .setTitle("NUVYRO update")
             .setDescription("מוריד גרסה חדשה")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalFilesDir(activity, Environment.DIRECTORY_DOWNLOADS, APK_NAME)

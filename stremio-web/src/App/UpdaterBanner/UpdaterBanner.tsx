@@ -13,8 +13,8 @@ const UpdaterBanner = ({ className }: Props) => {
     const { shell } = usePlatform();
     const [visible, show, hide] = useBinaryState(false);
     const isPlayer = useMatch('/player/*');
-    const isCinematicNative = navigator.userAgent.includes('CinematicTV/') ||
-        typeof (window as any).CinematicAndroid?.openInStremio === 'function';
+    const isCinematicNative = navigator.userAgent.includes('NuvyroTV/') ||
+        typeof (window as any).CinematicAndroid?.openNativePlayer === 'function';
 
     const onInstallClick = useCallback(() => {
         shell.send('autoupdater-notif-clicked');

@@ -23,6 +23,7 @@ const MetaDetails = () => {
     const navigate = useNavigate();
     const { getStoredOrigin } = useNavigateWithOrigin();
     const contentRef = React.useRef(null);
+    const episodeFocusPathRef = React.useRef(null);
     const { t } = useTranslation();
     const core = useCore();
     const urlParams = React.useMemo(() => ({
@@ -111,6 +112,41 @@ const MetaDetails = () => {
             : url.replace(encodeURIComponent(urlParams.videoId), searchVideoHash);
         navigate(searchVideoPath, { replace: true });
     }, [urlParams, location]);
+
+    React.useEffect(() => {
+        const handleNativePlaybackEnded = () => {
+            const videos = metaDetails.metaItem?.content?.type === 'Ready' ?
+                metaDetails.metaItem.content.content.videos
+                :
+                null;
+            if (!video || !Array.isArray(videos)) return;
+            const currentIndex = videos.findIndex((candidate) => candidate.id === video.id);
+            const nextEpisode = currentIndex >= 0 ? videos[currentIndex + 1] : null;
+            if (!nextEpisode || typeof nextEpisode.season !== 'number' || typeof nextEpisode.episode !== 'number') return;
+            try {
+                sessionStorage.setItem('nuvyro.autoplayVideoId', nextEpisode.id || 'next');
+            } catch (_) {
+                // Autoplay remains best-effort if storage is unavailable.
+            }
+            handleEpisodeSearch(nextEpisode.season, nextEpisode.episode);
+        };
+        window.addEventListener('nuvyro-playback-ended', handleNativePlaybackEnded);
+        return () => window.removeEventListener('nuvyro-playback-ended', handleNativePlaybackEnded);
+    }, [metaDetails.metaItem, video, handleEpisodeSearch]);
+
+    React.useEffect(() => {
+        if (streamPath !== null || metaDetails.metaItem?.content?.type !== 'Ready' ||
+            episodeFocusPathRef.current === location.pathname) return;
+        episodeFocusPathRef.current = location.pathname;
+        const timer = window.setTimeout(() => {
+            const firstEpisode = contentRef.current?.querySelector('[data-nuvyro-episode="true"]');
+            if (firstEpisode instanceof HTMLElement) {
+                firstEpisode.focus({ preventScroll: false });
+                firstEpisode.scrollIntoView({ block: 'center', inline: 'nearest' });
+            }
+        }, 450);
+        return () => window.clearTimeout(timer);
+    }, [location.pathname, streamPath, metaDetails.metaItem]);
 
     const renderBackgroundImageFallback = React.useCallback(() => null, []);
     const renderBackground = React.useMemo(() => !!(
