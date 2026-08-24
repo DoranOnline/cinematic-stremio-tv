@@ -20,8 +20,11 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: var(--vertical-nav-bar-size);
+        width: 11rem;
         height: var(--horizontal-nav-bar-size);
+        gap: 0.65rem;
+        padding-left: 1.25rem;
+        justify-content: flex-start;
 
         .logo {
             flex: none;
@@ -30,6 +33,33 @@
             object-position: center;
             object-fit: contain;
             opacity: 0.9;
+        }
+
+        .brand-mark {
+            display: grid;
+            place-items: center;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 0.8rem;
+            background: linear-gradient(145deg, #ff425d, #b9002d);
+            box-shadow: 0 0.75rem 2rem rgba(255, 38, 78, 0.34);
+            color: #fff;
+            font-size: 1.45rem;
+            font-weight: 900;
+            font-style: italic;
+        }
+
+        .brand-name {
+            color: #fff;
+            font-size: 0.78rem;
+            font-weight: 850;
+            letter-spacing: 0.12rem;
+            text-transform: uppercase;
+            white-space: nowrap;
+
+            &::before {
+                content: 'CINEMATIC';
+            }
         }
     }
 
@@ -128,6 +158,12 @@
 
         .logo-container {
             width: var(--horizontal-nav-bar-size);
+            padding-left: 0;
+            justify-content: center;
+
+            .brand-name {
+                display: none;
+            }
         }
 
         .button-container {

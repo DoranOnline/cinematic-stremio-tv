@@ -119,6 +119,10 @@ const Stream = ({ className, videoId, videoReleased, addonName, name, descriptio
             return;
         }
 
+        if (typeof props.onClick === 'function') {
+            props.onClick(event);
+        }
+
         if (usesCinematicPlayer) {
             event.preventDefault();
             event.stopPropagation();
@@ -160,9 +164,6 @@ const Stream = ({ className, videoId, videoReleased, addonName, name, descriptio
             });
         }
 
-        if (typeof props.onClick === 'function') {
-            props.onClick(event);
-        }
     }, [props.onClick, profile.settings, markVideoAsWatched, streamLink, videoId, name, description, addonName, nativePlayback, usesCinematicPlayer]);
 
     const copyMagnetLink = React.useCallback((event) => {

@@ -1,4 +1,8 @@
-# Cinematic Stremio TV
+# Cinematic TV 2.0
+
+A watch-first Android TV and tablet experience: cinematic branding, a native
+player, large remote controls, saved progress, language controls, automatic
+updates, high-contrast focus and source-first movie/episode screens.
 
 A remote-friendly Android TV and tablet shell for Stremio Web, with a brighter cinematic interface and a built-in compatibility player.
 

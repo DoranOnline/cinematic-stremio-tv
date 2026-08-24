@@ -145,7 +145,9 @@ const MetaDetails = () => {
                 navMenu={true}
                 originPath={originPath}
             />
-            <div ref={contentRef} className={styles['metadetails-content']}>
+            <div ref={contentRef} className={classnames(styles['metadetails-content'], {
+                [styles['watch-options-active']]: streamPath !== null
+            })}>
                 {
                     metaPath === null ?
                         <DelayedRenderer delay={500}>
@@ -170,7 +172,7 @@ const MetaDetails = () => {
                                 metaDetails.metaItem.content.type === 'Loading' ?
                                     <MetaPreview.Placeholder className={styles['meta-preview']} />
                                     :
-                                    <React.Fragment>
+                                    streamPath === null ? <React.Fragment>
                                         <MetaPreview
                                             className={classnames(styles['meta-preview'], 'animation-fade-in')}
                                             name={metaDetails.metaItem.content.content.name}
@@ -193,9 +195,9 @@ const MetaDetails = () => {
                                             metaId={metaDetails.metaItem.content.content.id}
                                             ratingInfo={metaDetails.ratingInfo}
                                         />
-                                    </React.Fragment>
+                                    </React.Fragment> : null
                 }
-                <div className={styles['spacing']} />
+                {streamPath === null ? <div className={styles['spacing']} /> : null}
                 {
                     streamPath !== null ?
                         <StreamsList

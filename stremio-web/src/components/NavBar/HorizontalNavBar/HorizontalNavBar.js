@@ -5,7 +5,7 @@ const { useNavigate } = require('react-router');
 const PropTypes = require('prop-types');
 const classnames = require('classnames');
 const { default: Icon } = require('@stremio/stremio-icons/react');
-const { Button, Image } = require('stremio/components');
+const { Button } = require('stremio/components');
 const { useFullscreen } = require('stremio/common/Fullscreen');
 const { useHorizontalNavGamepadNavigation } = require('stremio/services/GamepadNavigation');
 const SearchBar = require('./SearchBar');
@@ -40,12 +40,9 @@ const HorizontalNavBar = React.memo(({ className, route, query, title, backButto
                         <Icon className={styles['icon']} name={'chevron-back'} />
                     </Button>
                     :
-                    <div className={styles['logo-container']}>
-                        <Image
-                            className={styles['logo']}
-                            src={require('/assets/images/stremio_symbol.png')}
-                            alt={' '}
-                        />
+                    <div className={styles['logo-container']} aria-label={'Cinematic'}>
+                        <span className={styles['brand-mark']}>C</span>
+                        <span className={styles['brand-name']} aria-hidden={'true'} />
                     </div>
             }
             {

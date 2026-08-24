@@ -98,6 +98,23 @@
             background-color: rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(15px);
         }
+
+        &.watch-options-active {
+            display: block;
+            margin-top: calc(var(--top-overlay-size) * -1);
+            padding: calc(var(--top-overlay-size) + 1rem) clamp(1.25rem, 4vw, 5rem) 2rem;
+            overflow: hidden;
+
+            .streams-list {
+                width: 100%;
+                height: 100%;
+                border-radius: 1.5rem;
+                background: linear-gradient(145deg, rgba(18, 25, 37, 0.96), rgba(8, 12, 19, 0.94));
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.4);
+                backdrop-filter: blur(26px);
+            }
+        }
     }
 }
 

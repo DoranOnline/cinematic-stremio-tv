@@ -15,15 +15,37 @@ const { usePlatform, useProfile } = require('stremio/common');
 const { default: SeasonEpisodePicker } = require('../EpisodePicker');
 
 const ALL_ADDONS_KEY = 'ALL';
+const PREFERRED_ADDONS_KEY = 'cinematic.preferredAddons';
+
+const loadPreferredAddons = () => {
+    try {
+        const value = JSON.parse(localStorage.getItem(PREFERRED_ADDONS_KEY) || '[]');
+        return Array.isArray(value) ? value.filter((name) => typeof name === 'string') : [];
+    } catch (_) {
+        return [];
+    }
+};
 
 const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const core = useCore();
     const platform = usePlatform();
     const profile = useProfile();
     const navigate = useNavigate();
     const streamsContainerRef = React.useRef(null);
     const [selectedAddon, setSelectedAddon] = React.useState(ALL_ADDONS_KEY);
+    const [preferredAddons, setPreferredAddons] = React.useState(loadPreferredAddons);
+    const rememberAddon = React.useCallback((addonName) => {
+        setPreferredAddons((current) => {
+            const next = [addonName, ...current.filter((name) => name !== addonName)].slice(0, 8);
+            try {
+                localStorage.setItem(PREFERRED_ADDONS_KEY, JSON.stringify(next));
+            } catch (_) {
+                // Preference persistence is optional; playback must continue.
+            }
+            return next;
+        });
+    }, []);
     const onAddonSelected = React.useCallback((value) => {
         streamsContainerRef.current.scrollTo({ top: 0, left: 0, behavior: platform.name === 'ios' ? 'smooth' : 'instant' });
         setSelectedAddon(value);
@@ -54,6 +76,7 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
                     streams: streams.content.content.map((stream) => ({
                         ...stream,
                         onClick: () => {
+                            rememberAddon(streams.addon.manifest.name);
                             core.transport.analytics({
                                 event: 'StreamClicked',
                                 args: {
@@ -67,16 +90,28 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
 
                 return streamsByAddon;
             }, {});
-    }, [props.streams]);
+    }, [props.streams, rememberAddon]);
+    const orderedAddonKeys = React.useMemo(() => {
+        return Object.keys(streamsByAddon).sort((left, right) => {
+            const leftName = streamsByAddon[left].addon.manifest.name;
+            const rightName = streamsByAddon[right].addon.manifest.name;
+            const leftIndex = preferredAddons.indexOf(leftName);
+            const rightIndex = preferredAddons.indexOf(rightName);
+            if (leftIndex === -1 && rightIndex === -1) return 0;
+            if (leftIndex === -1) return 1;
+            if (rightIndex === -1) return -1;
+            return leftIndex - rightIndex;
+        });
+    }, [streamsByAddon, preferredAddons]);
     const filteredStreams = React.useMemo(() => {
         return selectedAddon === ALL_ADDONS_KEY ?
-            Object.values(streamsByAddon).map(({ streams }) => streams).flat(1)
+            orderedAddonKeys.map((key) => streamsByAddon[key].streams).flat(1)
             :
             streamsByAddon[selectedAddon] ?
                 streamsByAddon[selectedAddon].streams
                 :
                 [];
-    }, [streamsByAddon, selectedAddon]);
+    }, [streamsByAddon, selectedAddon, orderedAddonKeys]);
     const selectableOptions = React.useMemo(() => {
         return {
             options: [
@@ -85,7 +120,7 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
                     label: t('ALL_ADDONS'),
                     title: t('ALL_ADDONS')
                 },
-                ...Object.keys(streamsByAddon).map((transportUrl) => ({
+                ...orderedAddonKeys.map((transportUrl) => ({
                     value: transportUrl,
                     label: streamsByAddon[transportUrl].addon.manifest.name,
                     title: streamsByAddon[transportUrl].addon.manifest.name,
@@ -94,11 +129,21 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
             value: selectedAddon,
             onSelect: onAddonSelected
         };
-    }, [streamsByAddon, selectedAddon]);
+    }, [streamsByAddon, selectedAddon, orderedAddonKeys]);
 
     const handleEpisodePicker = React.useCallback((season, episode) => {
         onEpisodeSearch(season, episode);
     }, [onEpisodeSearch]);
+    const watchCopy = React.useMemo(() => {
+        const language = i18n.resolvedLanguage || i18n.language || 'en';
+        return language.startsWith('he') ? {
+            title: 'בחרו מקור והתחילו לצפות',
+            ready: 'מוכנים'
+        } : {
+            title: 'Choose a source and start watching',
+            ready: 'ready'
+        };
+    }, [i18n.resolvedLanguage, i18n.language]);
 
     return (
         <div className={classnames(className, styles['streams-list-container'])}>
@@ -127,6 +172,11 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
                         :
                         null
                 }
+            </div>
+            <div className={styles['watch-heading']}>
+                <div className={styles['watch-kicker']} aria-hidden={'true'} />
+                <div className={styles['watch-title']}>{watchCopy.title}</div>
+                <div className={styles['watch-status']}>{filteredStreams.length} {watchCopy.ready}</div>
             </div>
             {
                 props.streams.length === 0 ?

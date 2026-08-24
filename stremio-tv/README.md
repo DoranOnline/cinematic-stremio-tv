@@ -21,6 +21,11 @@ a brighter blue-black canvas, warmer typography, polished glass surfaces,
 clearer focus states, larger remote/touch targets, and redesigned discovery,
 details, streams, settings, add-ons, search, dialogs, and feedback states.
 
+Version 2.0 introduces the CINEMATIC identity and a watch-first details flow.
+After choosing a movie or episode, sources take over the screen immediately;
+previously chosen providers are promoted automatically. TV focus rings are now
+high contrast across episodes, sources and actions so remote position is clear.
+
 ## Build
 
 1. Build `../stremio-web` with `corepack pnpm run build`.
