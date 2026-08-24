@@ -13,6 +13,9 @@ touch targets, play/pause, 10-second seek, timeline, app brightness controls,
 control locking, combined audio/subtitle selection, playback speed, source
 switching, and local resume progress keyed by movie or episode.
 
+Version 1.3.1 validates completed update downloads before launching Android's
+installer, preventing partial files from producing package parsing errors.
+
 ## Build
 
 1. Build `../stremio-web` with `corepack pnpm run build`.

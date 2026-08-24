@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -43,7 +44,7 @@ final class AppUpdateManager {
         public void onReceive(Context context, Intent intent) {
             final long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L);
             if (id == activeDownloadId) {
-                openInstallerWhenAllowed();
+                handleCompletedDownload(id);
             }
         }
     };
@@ -60,7 +61,7 @@ final class AppUpdateManager {
     }
 
     void resume() {
-        if (downloadedApk != null && downloadedApk.exists()) {
+        if (isValidApk(downloadedApk)) {
             openInstallerWhenAllowed();
         }
     }
@@ -152,7 +153,7 @@ final class AppUpdateManager {
     }
 
     private void openInstallerWhenAllowed() {
-        if (downloadedApk == null || !downloadedApk.exists()) return;
+        if (!isValidApk(downloadedApk)) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             !activity.getPackageManager().canRequestPackageInstalls()) {
             final Intent settingsIntent = new Intent(
@@ -175,5 +176,28 @@ final class AppUpdateManager {
         if (installIntent.resolveActivity(activity.getPackageManager()) != null) {
             activity.startActivity(installIntent);
         }
+    }
+
+    private void handleCompletedDownload(long downloadId) {
+        final DownloadManager manager =
+            (DownloadManager) activity.getSystemService(Context.DOWNLOAD_SERVICE);
+        try (Cursor cursor = manager.query(
+            new DownloadManager.Query().setFilterById(downloadId))) {
+            if (cursor == null || !cursor.moveToFirst()) return;
+            final int status = cursor.getInt(
+                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+            if (status == DownloadManager.STATUS_SUCCESSFUL && isValidApk(downloadedApk)) {
+                openInstallerWhenAllowed();
+            } else {
+                if (downloadedApk != null && downloadedApk.exists()) downloadedApk.delete();
+                Toast.makeText(activity, "ההורדה לא הושלמה. נסה שוב.", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    private boolean isValidApk(File apk) {
+        if (apk == null || !apk.isFile() || apk.length() < 1_000_000L) return false;
+        return activity.getPackageManager().getPackageArchiveInfo(
+            apk.getAbsolutePath(), PackageManager.GET_ACTIVITIES) != null;
     }
 }

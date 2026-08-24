@@ -44,6 +44,9 @@ Download the APK from the latest GitHub Release. Starting with v0.7, the app che
 - App brightness controls and accidental-touch control locking.
 - Loading messages no longer overlap the primary playback actions.
 
+Version 1.3.1 verifies that an update download completed and contains a valid
+Android package before opening the installer, preventing partial-download parse errors.
+
 This project does not provide, host, index, or sell media. It is an independent UI shell and is not affiliated with Stremio, Netflix, or HOT.
 
 ## Build
