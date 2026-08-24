@@ -1,0 +1,492 @@
+/*
+ * Cinematic TV
+ * A 10-foot interface tuned for Android TV remotes and tablet touch.
+ */
+
+:root {
+    --cinema-black: #0b0d12;
+    --cinema-surface: #171a21;
+    --cinema-surface-raised: #20242d;
+    --cinema-red: #e50914;
+    --cinema-red-hot: #ff2532;
+    --cinema-text: #f7f7f5;
+    --cinema-muted: #b9bbc1;
+    --cinema-line: rgba(255, 255, 255, 0.12);
+    --cinema-focus: #ffffff;
+    --primary-background-color: var(--cinema-black);
+    --secondary-background-color: #12151b;
+    --modal-background-color: rgba(13, 15, 19, 0.96);
+    --primary-foreground-color: var(--cinema-text);
+    --primary-accent-color: var(--cinema-red);
+    --secondary-accent-color: var(--cinema-red-hot);
+    --overlay-color: rgba(255, 255, 255, 0.08);
+    --outer-glow: 0 0 0 0.2rem rgba(255, 255, 255, 0.95), 0 1.1rem 3rem rgba(0, 0, 0, 0.72);
+    --border-radius: 0.45rem;
+    --horizontal-nav-bar-size: 5.2rem;
+    --vertical-nav-bar-size: 0rem;
+    --focus-outline-size: 0.2rem;
+}
+
+:global {
+    html,
+    body,
+    #app {
+        background: var(--cinema-black) !important;
+    }
+
+    body {
+        color: var(--cinema-text);
+    }
+
+    // Subtle film grain keeps large projector gradients from banding.
+    body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        pointer-events: none;
+        opacity: 0.035;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+    }
+
+    // Shell: convert the original left rail into a Netflix-like top nav.
+    [class*='main-nav-bars-container'] {
+        background:
+            radial-gradient(circle at 78% -15%, rgba(229, 9, 20, 0.16), transparent 34rem),
+            radial-gradient(circle at 15% 35%, rgba(78, 96, 140, 0.1), transparent 38rem),
+            linear-gradient(180deg, #11141a 0%, var(--cinema-black) 38%);
+    }
+
+    [class*='horizontal-nav-bar-container'] {
+        height: var(--horizontal-nav-bar-size) !important;
+        padding: 0 2.4rem !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        background: linear-gradient(180deg, rgba(7, 8, 10, 0.98), rgba(7, 8, 10, 0.88)) !important;
+        backdrop-filter: blur(1.2rem) saturate(1.2);
+        box-shadow: 0 0.6rem 2rem rgba(0, 0, 0, 0.26);
+    }
+
+    [class*='horizontal-nav-bar-container'] [class*='logo-container'] {
+        width: 3.4rem !important;
+        margin-right: 0.8rem;
+        filter: saturate(0) brightness(2.8);
+    }
+
+    [class*='vertical-nav-bar-container'] {
+        top: 0 !important;
+        bottom: auto !important;
+        left: 6.2rem !important;
+        z-index: 5 !important;
+        width: auto !important;
+        height: var(--horizontal-nav-bar-size) !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        padding: 0 !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        overflow: visible !important;
+    }
+
+    [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'] {
+        width: auto !important;
+        height: 3rem !important;
+        min-width: 4.25rem;
+        margin: 0 0.1rem !important;
+        padding: 0 0.9rem !important;
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 0.55rem;
+        border-radius: 999px !important;
+        color: var(--cinema-muted) !important;
+        transition: color 160ms ease, background 160ms ease, transform 160ms ease !important;
+    }
+
+    [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'] svg {
+        width: 1.15rem !important;
+        height: 1.15rem !important;
+        opacity: 0.92;
+        stroke-width: 1.8;
+    }
+
+    [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container']:hover,
+    [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container']:focus,
+    [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'].selected {
+        color: var(--cinema-text) !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+        transform: translateY(-0.08rem);
+        outline: none !important;
+    }
+
+    [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'].selected::after {
+        content: '';
+        position: absolute;
+        left: 1rem;
+        right: 1rem;
+        bottom: 0.2rem;
+        height: 0.16rem;
+        border-radius: 1rem;
+        background: var(--cinema-red);
+        box-shadow: 0 0 0.8rem rgba(229, 9, 20, 0.75);
+    }
+
+    [class*='nav-content-container'] {
+        top: var(--horizontal-nav-bar-size) !important;
+        left: 0 !important;
+    }
+
+    // Compact search pill in the right half of the top bar.
+    [class*='search-bar-container'] {
+        max-width: 21rem !important;
+        height: 2.9rem !important;
+        margin-left: auto !important;
+        border: 1px solid var(--cinema-line) !important;
+        border-radius: 999px !important;
+        background: rgba(255, 255, 255, 0.06) !important;
+        transition: width 180ms ease, border-color 180ms ease, background 180ms ease !important;
+    }
+
+    [class*='search-bar-container']:focus-within,
+    [class*='search-bar-container']:hover {
+        border-color: rgba(255, 255, 255, 0.48) !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    // The search submit icon lives inside the pill. Draw one pill-shaped focus
+    // state instead of the oversized square seen on the projector.
+    [class*='search-bar-container'] [class*='submit-button-container']:focus {
+        outline: none !important;
+        border-radius: 999px !important;
+        background: rgba(255, 255, 255, 0.12) !important;
+    }
+
+    [class*='horizontal-nav-bar-container'] [class*='menu-button-container']:focus {
+        opacity: 1 !important;
+        border-radius: 999px !important;
+        outline-offset: 0.12rem !important;
+        background: rgba(255, 255, 255, 0.12) !important;
+    }
+
+    // A Capacitor TV activity already occupies the whole screen. Hiding this
+    // control removes the unexplained square icon and shortens D-pad travel.
+    html.cinematic-native [class*='horizontal-nav-bar-container'] [title*='fullscreen' i] {
+        display: none !important;
+    }
+
+    [class*='search-bar-container'] [class*='placeholder-label'] {
+        color: var(--cinema-muted) !important;
+        font-size: 0.9rem !important;
+    }
+
+    // Board spacing and row typography.
+    [class*='board-content'] {
+        padding: 1.2rem 2.2rem 5rem !important;
+        scroll-behavior: smooth;
+    }
+
+    [class*='board-row'] {
+        margin: 0 0 1.25rem !important;
+        overflow: visible !important;
+        animation: cinema-row-in 420ms both cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    [class*='board-row']:nth-child(2) { animation-delay: 40ms; }
+    [class*='board-row']:nth-child(3) { animation-delay: 80ms; }
+    [class*='board-row']:nth-child(4) { animation-delay: 120ms; }
+
+    [class*='meta-row-container'] {
+        overflow: visible !important;
+    }
+
+    [class*='meta-row-container'] > [class*='header-container'],
+    [class*='meta-row-container'] [class*='title-container'] {
+        min-height: 2.7rem;
+    }
+
+    [class*='meta-row-container'] [class*='title-label'] {
+        color: var(--cinema-text) !important;
+        font-size: 1.25rem !important;
+        font-weight: 750 !important;
+        letter-spacing: -0.025em;
+    }
+
+    // Movie tiles: clear remote focus, restrained motion, readable titles.
+    [class*='meta-item-container'] {
+        padding: 0.65rem !important;
+        overflow: visible !important;
+        transition: transform 170ms cubic-bezier(0.2, 0.8, 0.2, 1), z-index 0s !important;
+        transform-origin: center;
+    }
+
+    [class*='meta-item-container']:hover,
+    [class*='meta-item-container']:focus,
+    [class*='meta-item-container'].active,
+    [class*='meta-item-container'].selected {
+        z-index: 10;
+        transform: scale(1.075) translateY(-0.25rem);
+    }
+
+    [class*='meta-item-container'] [class*='poster-container'] {
+        border-radius: 0.55rem !important;
+        background: var(--cinema-surface) !important;
+        box-shadow: 0 0.65rem 1.5rem rgba(0, 0, 0, 0.32);
+        transition: box-shadow 170ms ease, filter 170ms ease !important;
+    }
+
+    [class*='meta-item-container']:hover [class*='poster-container'],
+    [class*='meta-item-container']:focus [class*='poster-container'],
+    [class*='meta-item-container'].active [class*='poster-container'],
+    [class*='meta-item-container'].selected [class*='poster-container'] {
+        box-shadow: var(--outer-glow) !important;
+        filter: saturate(1.1) contrast(1.03);
+    }
+
+    [class*='meta-item-container'] [class*='poster-image'] {
+        opacity: 1 !important;
+    }
+
+    [class*='meta-item-container'] [class*='title-bar-container'] {
+        height: 3.1rem !important;
+        padding-top: 0.25rem;
+    }
+
+    [class*='meta-item-container'] [class*='title-label'] {
+        color: #d9dadd !important;
+        font-size: 0.88rem !important;
+        font-weight: 650 !important;
+        text-align: left !important;
+        padding: 0 0.15rem !important;
+    }
+
+    [class*='meta-item-container']:focus [class*='title-label'],
+    [class*='meta-item-container'].selected [class*='title-label'] {
+        color: #fff !important;
+    }
+
+    [class*='progress-bar-layer'] {
+        height: 0.3rem !important;
+        bottom: 0.55rem !important;
+        left: 0.55rem !important;
+        right: 0.55rem !important;
+        background: rgba(255, 255, 255, 0.25);
+    }
+
+    [class*='progress-bar-layer'] [class*='progress-bar']:first-child {
+        background: var(--cinema-red) !important;
+    }
+
+    // Detail pages: cinematic right-anchored art with a dark reading zone.
+    [class*='metadetails-container'] [class*='background-image-layer']::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(90deg, var(--cinema-black) 0%, rgba(7, 8, 10, 0.9) 28%, rgba(7, 8, 10, 0.28) 68%, rgba(7, 8, 10, 0.55) 100%),
+            linear-gradient(0deg, var(--cinema-black) 0%, transparent 45%);
+    }
+
+    [class*='metadetails-container'] [class*='background-image'] {
+        opacity: 0.78 !important;
+        object-position: 72% center !important;
+        filter: saturate(0.9) contrast(1.06);
+    }
+
+    [class*='metadetails-content'] [class*='meta-preview'] {
+        padding-left: 4.5rem !important;
+        max-width: 50rem;
+    }
+
+    [class*='meta-preview'] [class*='title-label'] {
+        font-size: clamp(2.5rem, 5vw, 5.5rem) !important;
+        line-height: 0.96 !important;
+        letter-spacing: -0.055em;
+        text-shadow: 0 0.35rem 1.5rem rgba(0, 0, 0, 0.75);
+    }
+
+    [class*='meta-preview'] [class*='description'] {
+        max-width: 42rem;
+        color: #d4d5d7 !important;
+        font-size: 1.04rem !important;
+        line-height: 1.65 !important;
+    }
+
+    [class*='metadetails-content'] [class*='videos-list'],
+    [class*='metadetails-content'] [class*='streams-list'] {
+        flex-basis: 31rem !important;
+        border-left: 1px solid var(--cinema-line);
+        border-radius: 1rem 0 0 1rem !important;
+        background: rgba(10, 11, 14, 0.84) !important;
+        backdrop-filter: blur(1.8rem) saturate(1.2) !important;
+        box-shadow: -1.2rem 0 3rem rgba(0, 0, 0, 0.28);
+    }
+
+    // Shared actions and fields.
+    [class*='button-container']:focus,
+    button:focus,
+    a:focus,
+    input:focus,
+    [tabindex='0']:focus {
+        outline: 0.2rem solid var(--cinema-focus) !important;
+        outline-offset: 0.14rem !important;
+    }
+
+    [class*='primary-button'],
+    [class*='play-button'] {
+        background: var(--cinema-text) !important;
+        color: #090a0c !important;
+        border-radius: 0.45rem !important;
+        font-weight: 800 !important;
+        box-shadow: 0 0.6rem 1.5rem rgba(0, 0, 0, 0.3);
+    }
+
+    [class*='modal-container'],
+    [class*='menu-container'] {
+        border: 1px solid var(--cinema-line) !important;
+        background: rgba(16, 18, 22, 0.96) !important;
+        backdrop-filter: blur(1.5rem) !important;
+        box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.65) !important;
+    }
+
+    [class*='settings-container'],
+    [class*='library-container'],
+    [class*='discover-container'],
+    [class*='addons-container'],
+    [class*='search-container'] {
+        background:
+            radial-gradient(circle at 85% 0%, rgba(229, 9, 20, 0.13), transparent 30rem),
+            radial-gradient(circle at 8% 50%, rgba(84, 102, 150, 0.08), transparent 34rem),
+            var(--cinema-black) !important;
+    }
+
+    @keyframes cinema-row-in {
+        from { opacity: 0; transform: translateY(1rem); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    // Android TV streamers often have a weak GPU. Remote key repeat can queue
+    // many focus paints, so avoid expensive blur, grain and smooth animations
+    // on devices whose primary input is a remote/touch surface.
+    @media (hover: none), (pointer: coarse) {
+        body::after {
+            display: none !important;
+        }
+
+        [class*='horizontal-nav-bar-container'],
+        [class*='metadetails-content'] [class*='videos-list'],
+        [class*='metadetails-content'] [class*='streams-list'],
+        [class*='modal-container'],
+        [class*='menu-container'] {
+            backdrop-filter: none !important;
+        }
+
+        [class*='board-content'] {
+            scroll-behavior: auto !important;
+        }
+
+        [class*='board-row'] {
+            animation: none !important;
+        }
+
+        [class*='meta-item-container'],
+        [class*='meta-item-container'] [class*='poster-container'],
+        [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'] {
+            transition-duration: 80ms !important;
+        }
+    }
+
+    // Capacitor runs on TV boxes with very different pointer reports. Apply a
+    // deterministic low-cost rendering profile whenever the native shell is
+    // detected instead of relying only on hover/pointer media queries.
+    html.cinematic-native body::after {
+        display: none !important;
+    }
+
+    html.cinematic-native [class*='horizontal-nav-bar-container'],
+    html.cinematic-native [class*='metadetails-content'] [class*='videos-list'],
+    html.cinematic-native [class*='metadetails-content'] [class*='streams-list'],
+    html.cinematic-native [class*='modal-container'],
+    html.cinematic-native [class*='menu-container'] {
+        backdrop-filter: none !important;
+    }
+
+    html.cinematic-native [class*='board-content'] {
+        scroll-behavior: auto !important;
+    }
+
+    html.cinematic-native [class*='board-row'] {
+        animation: none !important;
+    }
+
+    html.cinematic-native [class*='meta-item-container'],
+    html.cinematic-native [class*='meta-item-container'] [class*='poster-container'],
+    html.cinematic-native [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'] {
+        transition: none !important;
+    }
+
+    html.cinematic-native [class*='meta-item-container']:hover,
+    html.cinematic-native [class*='meta-item-container']:focus,
+    html.cinematic-native [class*='meta-item-container'].active,
+    html.cinematic-native [class*='meta-item-container'].selected {
+        transform: scale(1.035) !important;
+    }
+
+    html.cinematic-native [class*='meta-item-container']:hover [class*='poster-container'],
+    html.cinematic-native [class*='meta-item-container']:focus [class*='poster-container'],
+    html.cinematic-native [class*='meta-item-container'].active [class*='poster-container'],
+    html.cinematic-native [class*='meta-item-container'].selected [class*='poster-container'] {
+        filter: none !important;
+        box-shadow: 0 0 0 0.18rem #fff, 0 0.5rem 1rem rgba(0, 0, 0, 0.55) !important;
+    }
+
+    // Android TV reports a narrow CSS viewport even on 1080p displays, which
+    // activates Stremio's mobile `space-between` rule and pushes Add-ons and
+    // Settings underneath the search box. Keep the TV nav compact and ordered.
+    html.cinematic-native [class*='vertical-nav-bar-container'] {
+        width: 29rem !important;
+        max-width: calc(100% - 27rem) !important;
+        justify-content: flex-start !important;
+        gap: 0.2rem !important;
+    }
+
+    html.cinematic-native [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'] {
+        flex: 0 0 3.5rem !important;
+        min-width: 3.5rem !important;
+        width: 3.5rem !important;
+        padding: 0 !important;
+    }
+
+    html.cinematic-native [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'] [class*='label'] {
+        display: none !important;
+    }
+
+    @media (max-width: 900px) {
+        :root {
+            --horizontal-nav-bar-size: 4.65rem;
+        }
+
+        [class*='horizontal-nav-bar-container'] {
+            padding: 0 1rem !important;
+        }
+
+        [class*='vertical-nav-bar-container'] {
+            left: 4.6rem !important;
+        }
+
+        [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'] {
+            min-width: 2.7rem;
+            padding: 0 0.55rem !important;
+        }
+
+        [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'] [class*='label'] {
+            display: none !important;
+        }
+
+        [class*='search-bar-container'] {
+            max-width: 12rem !important;
+        }
+
+        [class*='board-content'] {
+            padding: 0.8rem 0.8rem 4rem !important;
+        }
+    }
+}

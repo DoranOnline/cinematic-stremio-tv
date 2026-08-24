@@ -1,0 +1,8 @@
+**/node_modules/
+**/build/
+**/.gradle/
+stremio-tv/android/app/src/main/assets/public/
+*.apk
+local.properties
+.idea/
+*.iml

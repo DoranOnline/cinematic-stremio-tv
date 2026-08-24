@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Cinematic</string>
+    <string name="title_activity_main">Cinematic</string>
+    <string name="package_name">il.cinematic.stremio</string>
+    <string name="custom_url_scheme">il.cinematic.stremio</string>
+</resources>

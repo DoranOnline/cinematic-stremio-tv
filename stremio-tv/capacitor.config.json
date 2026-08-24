@@ -1,0 +1,9 @@
+{
+  "appId": "il.cinematic.stremio",
+  "appName": "Cinematic",
+  "webDir": "../stremio-web/build",
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#08090c"
+  }
+}
