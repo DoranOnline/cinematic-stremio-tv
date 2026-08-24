@@ -3,6 +3,7 @@
 **/.gradle/
 stremio-tv/android/app/src/main/assets/public/
 *.apk
+*.keystore
 local.properties
 .idea/
 *.iml
