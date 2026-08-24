@@ -2,17 +2,16 @@ package il.cinematic.stremio;
 
 import android.os.Bundle;
 import android.os.SystemClock;
-import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.content.pm.ResolveInfo;
+import android.net.Uri;
 import android.view.KeyEvent;
 import android.graphics.Color;
-import android.net.Uri;
 import android.webkit.WebView;
 import android.webkit.WebSettings;
 import android.webkit.JavascriptInterface;
+import android.util.Log;
 
-import java.util.List;
+import androidx.activity.OnBackPressedCallback;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -37,10 +36,16 @@ public class MainActivity extends BridgeActivity {
         webView.setBackgroundColor(Color.rgb(7, 8, 10));
         webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
         webView.getSettings().setUserAgentString(
-            webView.getSettings().getUserAgentString() + " CinematicTV/0.7"
+            webView.getSettings().getUserAgentString() + " CinematicTV/0.8"
         );
-        webView.addJavascriptInterface(new PlaybackBridge(), "CinematicAndroid");
+        webView.addJavascriptInterface(new NativeStatusBridge(), "CinematicAndroid");
         webView.requestFocus();
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                handleBackNavigation();
+            }
+        });
         appUpdateManager = new AppUpdateManager(this);
         appUpdateManager.start();
     }
@@ -63,17 +68,31 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onBackPressed() {
+        handleBackNavigation();
+    }
+
+    private void handleBackNavigation() {
         final WebView webView = getBridge().getWebView();
         final String url = webView.getUrl();
+        Log.i("CinematicBack", "Back requested at " + url);
         if (url != null && url.contains("#/") && !url.endsWith("#/")) {
-            webView.evaluateJavascript("window.history.back();", null);
+            // A restored WebView route may have no usable browser history.
+            // Returning to the board is deterministic and never exits the TV app.
+            webView.evaluateJavascript("window.location.hash='#/';", null);
             return;
         }
-        super.onBackPressed();
+        finish();
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                handleBackNavigation();
+            }
+            return true;
+        }
+
         final String direction = directionForKeyCode(event.getKeyCode());
         if (direction == null) {
             return super.dispatchKeyEvent(event);
@@ -104,47 +123,31 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    private final class PlaybackBridge {
+    private final class NativeStatusBridge {
         @JavascriptInterface
-        public boolean openInStremio(String deepLink) {
-            if (deepLink == null) {
+        public boolean openNativePlayer(String streamUrl) {
+            if (streamUrl == null || streamUrl.isEmpty()) return false;
+            final Uri uri = Uri.parse(streamUrl);
+            if (!"http".equalsIgnoreCase(uri.getScheme()) && !"https".equalsIgnoreCase(uri.getScheme())) {
                 return false;
             }
-
-            if (!PlaybackLinkPolicy.isSupported(deepLink)) {
-                return false;
-            }
-
-            final Uri uri = Uri.parse(deepLink);
-            final Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-            intent.addCategory(Intent.CATEGORY_BROWSABLE);
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-
-            // Android TV boxes often register browsers and vendor launchers for
-            // custom schemes. Route only to the real Stremio package; a generic
-            // resolver was the source of the black-screen handoff in v0.5.
-            final List<ResolveInfo> handlers = getPackageManager().queryIntentActivities(intent, 0);
-            ResolveInfo stremioHandler = null;
-            for (ResolveInfo handler : handlers) {
-                final String packageName = handler.activityInfo.packageName;
-                if (packageName != null && packageName.toLowerCase().contains("stremio")) {
-                    stremioHandler = handler;
-                    break;
-                }
-            }
-            if (stremioHandler == null) {
-                return false;
-            }
-            intent.setPackage(stremioHandler.activityInfo.packageName);
             runOnUiThread(() -> {
-                try {
-                    startActivity(intent);
-                } catch (ActivityNotFoundException | SecurityException ignored) {
-                    // Keep this shell alive if the target disappears or refuses
-                    // the deep link after package discovery.
-                }
+                final Intent intent = new Intent(MainActivity.this, NativePlayerActivity.class);
+                intent.putExtra(NativePlayerActivity.EXTRA_STREAM_URL, streamUrl);
+                startActivity(intent);
             });
             return true;
+        }
+
+        @JavascriptInterface
+        public boolean isStreamingServerReady() {
+            return EmbeddedStreamingServer.isReady();
+        }
+
+        @JavascriptInterface
+        public String getStreamingServerUrl() {
+            final String url = EmbeddedStreamingServer.getBaseUrl();
+            return url == null ? "" : url;
         }
     }
 }

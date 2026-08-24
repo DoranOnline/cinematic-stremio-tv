@@ -118,10 +118,11 @@ const Stream = ({ className, videoId, videoReleased, addonName, name, descriptio
         }
 
         const nativePlayback = window.CinematicAndroid;
-        if (typeof deepLinks?.player === 'string' && typeof nativePlayback?.openInStremio === 'function') {
-            const opened = nativePlayback.openInStremio(deepLinks.player);
+        if (typeof streamLink === 'string' && typeof nativePlayback?.openNativePlayer === 'function') {
+            const opened = nativePlayback.openNativePlayer(streamLink);
             if (opened) {
                 event.preventDefault();
+                markVideoAsWatched();
                 return;
             }
         }
@@ -138,7 +139,7 @@ const Stream = ({ className, videoId, videoReleased, addonName, name, descriptio
         if (typeof props.onClick === 'function') {
             props.onClick(event);
         }
-    }, [props.onClick, profile.settings, markVideoAsWatched, deepLinks]);
+    }, [props.onClick, profile.settings, markVideoAsWatched, streamLink]);
 
     const copyMagnetLink = React.useCallback((event) => {
         event.preventDefault();
