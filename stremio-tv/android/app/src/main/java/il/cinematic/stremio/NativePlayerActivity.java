@@ -2,6 +2,7 @@ package il.cinematic.stremio;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
@@ -43,6 +44,7 @@ import org.videolan.libvlc.util.VLCVideoLayout;
 import java.util.ArrayList;
 import java.util.Locale;
 
+@SuppressLint("UnsafeOptInUsageError")
 public final class NativePlayerActivity extends Activity {
     static final String EXTRA_STREAM_URL = "stream_url";
     static final String EXTRA_VIDEO_ID = "video_id";
@@ -63,7 +65,7 @@ public final class NativePlayerActivity extends Activity {
     private MediaPlayer vlcPlayer;
     private VLCVideoLayout vlcView;
     private LinearLayout statusPanel;
-    private LinearLayout controlsPanel;
+    private FrameLayout controlsPanel;
     private TextView statusText;
     private TextView titleText;
     private TextView timeText;
@@ -76,6 +78,11 @@ public final class NativePlayerActivity extends Activity {
     private Button speedButton;
     private Button sourceButton;
     private Button languageButton;
+    private Button tracksButton;
+    private Button lockButton;
+    private Button unlockButton;
+    private Button closeButton;
+    private LinearLayout primaryControls;
     private View lastFocusedControl;
     private String streamUrl;
     private String videoId;
@@ -88,6 +95,8 @@ public final class NativePlayerActivity extends Activity {
     private boolean initialTrackPreferencesApplied;
     private long lastSavedAt;
     private String selectedLanguage;
+    private boolean controlsLocked;
+    private int brightnessPercent = 70;
 
     private final Runnable progressTicker = new Runnable() {
         @Override
@@ -171,21 +180,71 @@ public final class NativePlayerActivity extends Activity {
     }
 
     private void buildControlsPanel(FrameLayout root) {
-        controlsPanel = new LinearLayout(this);
-        controlsPanel.setOrientation(LinearLayout.VERTICAL);
-        controlsPanel.setPadding(48, 30, 48, 34);
+        controlsPanel = new FrameLayout(this);
         final GradientDrawable background = new GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
-            new int[]{0x22000000, 0xE6000000}
+            new int[]{0xD9000000, 0x55000000, 0xE6000000}
         );
         controlsPanel.setBackground(background);
 
+        final LinearLayout topBar = new LinearLayout(this);
+        topBar.setOrientation(LinearLayout.HORIZONTAL);
+        topBar.setGravity(Gravity.CENTER_VERTICAL);
+        topBar.setPadding(44, 26, 36, 0);
+        final TextView brand = new TextView(this);
+        brand.setText("◆");
+        brand.setTextColor(0xFFE50914);
+        brand.setTextSize(25f);
+        brand.setPadding(0, 0, 16, 0);
+        topBar.addView(brand);
         titleText = new TextView(this);
         titleText.setText(title);
         titleText.setTextColor(Color.WHITE);
         titleText.setTextSize(22f);
         titleText.setSingleLine(true);
-        controlsPanel.addView(titleText, matchWidthWrapHeight());
+        topBar.addView(titleText, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        languageButton = compactButton("שפה", view -> showLanguageMenu());
+        topBar.addView(languageButton);
+        closeButton = compactButton("✕", view -> finishPlayer());
+        closeButton.setContentDescription("Close player");
+        topBar.addView(closeButton);
+        controlsPanel.addView(topBar, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP));
+
+        primaryControls = new LinearLayout(this);
+        primaryControls.setOrientation(LinearLayout.HORIZONTAL);
+        primaryControls.setGravity(Gravity.CENTER);
+        rewindButton = primaryButton("↶ 10", view -> seekBy(-SEEK_STEP_MS));
+        primaryControls.addView(rewindButton);
+        playPauseButton = primaryButton("❚❚", view -> togglePlayPause());
+        playPauseButton.setTextSize(31f);
+        primaryControls.addView(playPauseButton);
+        forwardButton = primaryButton("10 ↷", view -> seekBy(SEEK_STEP_MS));
+        primaryControls.addView(forwardButton);
+        controlsPanel.addView(primaryControls, wrapContent(Gravity.CENTER));
+
+        final LinearLayout brightnessPanel = new LinearLayout(this);
+        brightnessPanel.setOrientation(LinearLayout.VERTICAL);
+        brightnessPanel.setGravity(Gravity.CENTER);
+        brightnessPanel.setPadding(28, 0, 0, 0);
+        final TextView brightnessIcon = new TextView(this);
+        brightnessIcon.setText("☀");
+        brightnessIcon.setTextColor(Color.WHITE);
+        brightnessIcon.setTextSize(23f);
+        brightnessIcon.setGravity(Gravity.CENTER);
+        brightnessPanel.addView(brightnessIcon, new LinearLayout.LayoutParams(64, 54));
+        final Button brighter = compactButton("＋", view -> changeBrightness(10));
+        brighter.setContentDescription("Increase brightness");
+        brightnessPanel.addView(brighter);
+        final Button dimmer = compactButton("−", view -> changeBrightness(-10));
+        dimmer.setContentDescription("Decrease brightness");
+        brightnessPanel.addView(dimmer);
+        final FrameLayout.LayoutParams brightnessParams = new FrameLayout.LayoutParams(130, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL | Gravity.START);
+        controlsPanel.addView(brightnessPanel, brightnessParams);
+
+        final LinearLayout bottomPanel = new LinearLayout(this);
+        bottomPanel.setOrientation(LinearLayout.VERTICAL);
+        bottomPanel.setPadding(44, 0, 44, 28);
 
         final LinearLayout timeline = new LinearLayout(this);
         timeline.setOrientation(LinearLayout.HORIZONTAL);
@@ -200,7 +259,7 @@ public final class NativePlayerActivity extends Activity {
         timeText.setPadding(18, 0, 0, 0);
         timeText.setText("00:00 / 00:00");
         timeline.addView(timeText);
-        controlsPanel.addView(timeline, matchWidthWrapHeight());
+        bottomPanel.addView(timeline, matchWidthWrapHeight());
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onStartTrackingTouch(SeekBar bar) { userSeeking = true; }
@@ -225,30 +284,28 @@ public final class NativePlayerActivity extends Activity {
         final LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         actions.setGravity(Gravity.CENTER);
-        rewindButton = button("↶ 10", view -> seekBy(-SEEK_STEP_MS));
-        actions.addView(rewindButton);
-        playPauseButton = button("Pause", view -> togglePlayPause());
-        actions.addView(playPauseButton);
-        forwardButton = button("10 ↷", view -> seekBy(SEEK_STEP_MS));
-        actions.addView(forwardButton);
-        subtitleButton = button("כתוביות", view -> showSubtitleMenu());
-        actions.addView(subtitleButton);
-        audioButton = button("שמע", view -> showAudioMenu());
-        actions.addView(audioButton);
         speedButton = button("מהירות", view -> showSpeedMenu());
         actions.addView(speedButton);
-        languageButton = button("שפה", view -> showLanguageMenu());
-        actions.addView(languageButton);
+        lockButton = button("נעילת מסך", view -> lockControls());
+        actions.addView(lockButton);
+        tracksButton = button("שמע וכתוביות", view -> showTracksMenu());
+        actions.addView(tracksButton);
         sourceButton = button("מקור אחר", view -> finish());
         actions.addView(sourceButton);
         actionScroller.addView(actions, matchWidthWrapHeight());
-        controlsPanel.addView(actionScroller, matchWidthWrapHeight());
+        bottomPanel.addView(actionScroller, matchWidthWrapHeight());
+        controlsPanel.addView(bottomPanel, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
+
+        unlockButton = primaryButton("🔒", view -> unlockControls());
+        unlockButton.setContentDescription("Unlock controls");
+        unlockButton.setVisibility(View.GONE);
+        root.addView(unlockButton, wrapContent(Gravity.CENTER));
         applyControlLabels();
 
         final FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            Gravity.BOTTOM
+            ViewGroup.LayoutParams.MATCH_PARENT
         );
         root.addView(controlsPanel, params);
     }
@@ -442,6 +499,16 @@ public final class NativePlayerActivity extends Activity {
             .show();
     }
 
+    private void showTracksMenu() {
+        final String[] labels = {text("כתוביות", "Subtitles"), text("שמע", "Audio")};
+        new AlertDialog.Builder(this)
+            .setTitle(text("שמע וכתוביות", "Audio & subtitles"))
+            .setItems(labels, (dialog, which) -> {
+                if (which == 0) showSubtitleMenu(); else showAudioMenu();
+            })
+            .show();
+    }
+
     private void showSpeedMenu() {
         final String[] labels = {"0.75×", "1.0×", "1.25×", "1.5×", "2.0×"};
         final float[] rates = {0.75f, 1f, 1.25f, 1.5f, 2f};
@@ -476,11 +543,12 @@ public final class NativePlayerActivity extends Activity {
         if (playPauseButton == null) return;
         rewindButton.setText(text("↶ 10", "↶ 10"));
         forwardButton.setText(text("10 ↷", "10 ↷"));
-        subtitleButton.setText(text("כתוביות", "Subtitles"));
-        audioButton.setText(text("שמע", "Audio"));
         speedButton.setText(text("מהירות", "Speed"));
         languageButton.setText(text("שפה", "Language"));
+        tracksButton.setText(text("שמע וכתוביות", "Audio & subtitles"));
+        lockButton.setText(text("נעילת מסך", "Lock controls"));
         sourceButton.setText(text("מקור אחר", "Other source"));
+        closeButton.setContentDescription(text("סגירת נגן", "Close player"));
         updatePlayPauseLabel();
     }
 
@@ -524,7 +592,7 @@ public final class NativePlayerActivity extends Activity {
     }
 
     private void updatePlayPauseLabel() {
-        playPauseButton.setText(isPlaying() ? text("עצור", "Pause") : text("נגן", "Play"));
+        playPauseButton.setText(isPlaying() ? "❚❚" : "▶");
     }
 
     private long getPosition() {
@@ -575,6 +643,11 @@ public final class NativePlayerActivity extends Activity {
     }
 
     private void showControls(boolean focusControl) {
+        if (controlsLocked) {
+            unlockButton.setVisibility(View.VISIBLE);
+            if (focusControl) unlockButton.requestFocus();
+            return;
+        }
         final boolean wasHidden = controlsPanel.getVisibility() != View.VISIBLE;
         controlsPanel.setVisibility(View.VISIBLE);
         if (focusControl && (wasHidden || controlsPanel.findFocus() == null)) {
@@ -587,6 +660,37 @@ public final class NativePlayerActivity extends Activity {
     private void scheduleControlsHide() {
         handler.removeCallbacks(hideControlsRunnable);
         handler.postDelayed(hideControlsRunnable, CONTROLS_TIMEOUT_MS);
+    }
+
+    private void lockControls() {
+        controlsLocked = true;
+        controlsPanel.setVisibility(View.GONE);
+        unlockButton.setVisibility(View.VISIBLE);
+        unlockButton.requestFocus();
+        handler.removeCallbacks(hideControlsRunnable);
+    }
+
+    private void unlockControls() {
+        controlsLocked = false;
+        unlockButton.setVisibility(View.GONE);
+        showControls(true);
+    }
+
+    private void setPlayerBrightness(int value) {
+        final WindowManager.LayoutParams params = getWindow().getAttributes();
+        params.screenBrightness = Math.max(0.05f, value / 100f);
+        getWindow().setAttributes(params);
+    }
+
+    private void changeBrightness(int delta) {
+        brightnessPercent = Math.max(5, Math.min(100, brightnessPercent + delta));
+        setPlayerBrightness(brightnessPercent);
+        showStatusTemporarily(text("בהירות " + brightnessPercent + "%", "Brightness " + brightnessPercent + "%"));
+    }
+
+    private void finishPlayer() {
+        saveProgress();
+        finish();
     }
 
     private void openExternalPlayer() {
@@ -604,6 +708,7 @@ public final class NativePlayerActivity extends Activity {
         runOnUiThread(() -> {
             statusText.setText(text);
             statusPanel.setVisibility(View.VISIBLE);
+            if (primaryControls != null) primaryControls.setVisibility(View.INVISIBLE);
         });
     }
 
@@ -613,12 +718,20 @@ public final class NativePlayerActivity extends Activity {
     }
 
     private void hideStatus() {
-        runOnUiThread(() -> statusPanel.setVisibility(View.GONE));
+        runOnUiThread(() -> {
+            statusPanel.setVisibility(View.GONE);
+            if (primaryControls != null) primaryControls.setVisibility(View.VISIBLE);
+        });
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+            if (controlsLocked) {
+                unlockButton.setVisibility(View.VISIBLE);
+                unlockButton.requestFocus();
+                return true;
+            }
             switch (event.getKeyCode()) {
                 case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                 case KeyEvent.KEYCODE_SPACE:
@@ -656,6 +769,10 @@ public final class NativePlayerActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (controlsLocked) {
+            unlockControls();
+            return;
+        }
         if (controlsPanel.getVisibility() == View.VISIBLE) {
             controlsPanel.setVisibility(View.GONE);
         } else {
@@ -726,6 +843,25 @@ public final class NativePlayerActivity extends Activity {
         params.setMargins(7, 4, 7, 4);
         button.setLayoutParams(params);
         return button;
+    }
+
+    private Button compactButton(String label, View.OnClickListener listener) {
+        final Button result = button(label, listener);
+        result.setMinWidth(88);
+        result.setTextSize(15f);
+        return result;
+    }
+
+    private Button primaryButton(String label, View.OnClickListener listener) {
+        final Button result = button(label, listener);
+        result.setMinWidth(142);
+        result.setMinHeight(94);
+        result.setTextSize(22f);
+        final LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.setMargins(22, 8, 22, 8);
+        result.setLayoutParams(params);
+        return result;
     }
 
     private static FrameLayout.LayoutParams matchParent() {

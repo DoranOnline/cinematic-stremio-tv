@@ -14,6 +14,7 @@ import android.provider.Settings;
 import android.widget.Toast;
 
 import androidx.core.content.FileProvider;
+import androidx.core.content.ContextCompat;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -53,11 +54,8 @@ final class AppUpdateManager {
 
     void start() {
         final IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            activity.registerReceiver(downloadReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            activity.registerReceiver(downloadReceiver, filter);
-        }
+        ContextCompat.registerReceiver(
+            activity, downloadReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
         activity.getWindow().getDecorView().postDelayed(this::checkForUpdate, 3500L);
     }
 

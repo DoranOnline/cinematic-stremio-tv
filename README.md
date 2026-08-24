@@ -35,6 +35,15 @@ Download the APK from the latest GitHub Release. Starting with v0.7, the app che
 - Playback links are handed only to an installed Stremio package.
 - Back and profile navigation are remote-friendly.
 
+## What v1.3 redesigns
+
+- Netflix-inspired cinematic overlay without copying Netflix branding.
+- Large centered play/pause and 10-second seek controls.
+- Clean top title bar, close action, timeline and separated secondary controls.
+- Combined audio and subtitle menu, playback speed and source switching.
+- App brightness controls and accidental-touch control locking.
+- Loading messages no longer overlap the primary playback actions.
+
 This project does not provide, host, index, or sell media. It is an independent UI shell and is not affiliated with Stremio, Netflix, or HOT.
 
 ## Build
