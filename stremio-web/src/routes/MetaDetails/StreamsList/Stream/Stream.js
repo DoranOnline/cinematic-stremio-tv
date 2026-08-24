@@ -18,6 +18,8 @@ const Stream = ({ className, videoId, videoReleased, addonName, name, descriptio
     const platform = usePlatform();
     const core = useCore();
     const routeFocused = useRouteFocused();
+    const nativePlayback = typeof window !== 'undefined' ? window.CinematicAndroid : null;
+    const usesCinematicPlayer = typeof nativePlayback?.openNativePlayer === 'function';
 
     const [menuOpen, openMenu, closeMenu, toggleMenu] = useBinaryState(false);
 
@@ -117,13 +119,30 @@ const Stream = ({ className, videoId, videoReleased, addonName, name, descriptio
             return;
         }
 
-        const nativePlayback = window.CinematicAndroid;
-        if (typeof streamLink === 'string' && typeof nativePlayback?.openNativePlayer === 'function') {
-            const opened = nativePlayback.openNativePlayer(streamLink, videoId || '', name || description || addonName || 'Cinematic');
-            if (opened) {
-                event.preventDefault();
+        if (usesCinematicPlayer) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (typeof streamLink !== 'string' || streamLink.length === 0) {
+                toast.show({
+                    type: 'error',
+                    title: 'המקור עדיין לא מוכן לניגון',
+                    timeout: 4000
+                });
                 return;
             }
+
+            const opened = nativePlayback.openNativePlayer(streamLink, videoId || '', name || description || addonName || 'Cinematic');
+            if (opened) {
+                return;
+            }
+
+            toast.show({
+                type: 'error',
+                title: 'לא ניתן לפתוח את המקור בנגן הפנימי',
+                timeout: 4000
+            });
+            return;
         }
 
         if (profile.settings.playerType !== null) {
@@ -138,7 +157,7 @@ const Stream = ({ className, videoId, videoReleased, addonName, name, descriptio
         if (typeof props.onClick === 'function') {
             props.onClick(event);
         }
-    }, [props.onClick, profile.settings, markVideoAsWatched, streamLink, videoId, name, description, addonName]);
+    }, [props.onClick, profile.settings, markVideoAsWatched, streamLink, videoId, name, description, addonName, nativePlayback, usesCinematicPlayer]);
 
     const copyMagnetLink = React.useCallback((event) => {
         event.preventDefault();
@@ -212,7 +231,7 @@ const Stream = ({ className, videoId, videoReleased, addonName, name, descriptio
 
     const renderLabel = React.useMemo(() => function renderLabel({ className, children, ...props }) {
         return (
-            <Button className={classnames(className, styles['stream-container'])} title={addonName} href={href} target={target} download={download} onClick={onClick} {...props}>
+            <Button className={classnames(className, styles['stream-container'])} title={addonName} href={usesCinematicPlayer ? null : href} target={usesCinematicPlayer ? null : target} download={usesCinematicPlayer ? null : download} onClick={onClick} {...props}>
                 <div className={styles['info-container']}>
                     {
                         typeof thumbnail === 'string' && thumbnail.length > 0 ?
@@ -244,7 +263,7 @@ const Stream = ({ className, videoId, videoReleased, addonName, name, descriptio
                 {children}
             </Button>
         );
-    }, [thumbnail, progress, addonName, name, description, href, target, download, onClick]);
+    }, [thumbnail, progress, addonName, name, description, href, target, download, onClick, usesCinematicPlayer]);
 
     const renderMenu = React.useMemo(() => function renderMenu() {
         return (
