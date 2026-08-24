@@ -30,7 +30,7 @@ jobs:
         working-directory: stremio-web
         run: |
           pnpm install --frozen-lockfile
-          pnpm test -- --runInBand
+          pnpm exec jest --runInBand
           pnpm lint
           pnpm build
 
