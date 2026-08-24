@@ -44,11 +44,26 @@
         .watch-status {
             grid-column: 2;
             grid-row: 1 / span 2;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.15rem;
             padding: 0.6rem 1rem;
             border-radius: 999px;
             color: #b8f7d0;
             background: rgba(47, 191, 113, 0.13);
             border: 1px solid rgba(71, 220, 139, 0.3);
+
+            &.status-empty {
+                color: rgba(255, 255, 255, 0.62);
+                background: rgba(255, 255, 255, 0.06);
+                border-color: rgba(255, 255, 255, 0.12);
+            }
+
+            .watch-checking {
+                color: rgba(255, 255, 255, 0.58);
+                font-size: 0.72rem;
+            }
         }
     }
 
@@ -82,30 +97,6 @@
             text-align: center;
             color: var(--primary-foreground-color);
             margin-bottom: 2rem;
-        }
-    }
-
-    .addons-loading-container {
-        display: flex;
-        z-index: 1;
-        overflow: visible;
-        margin: 2em;
-        gap: 1em;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        border-radius: var(--border-radius) var(--border-radius) 0 0;
-
-        .addons-loading {
-            color: var(--primary-foreground-color);
-            font-size: 1rem;
-        }
-
-        .addons-loading-bar {
-            width: 90%;
-            height: 0.3em;
-            border-radius: var(--border-radius);
-            background-color: var(--primary-accent-color);
         }
     }
 
@@ -252,12 +243,5 @@
             }
         }
 
-        .addons-loading-container {
-            position: sticky;
-            bottom: 0;
-            margin: 0;
-            padding: 1em;
-            background-color: var(--primary-background-color);
-        }
     }
 }

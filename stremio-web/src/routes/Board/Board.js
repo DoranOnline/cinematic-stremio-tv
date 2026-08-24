@@ -5,7 +5,8 @@ const classnames = require('classnames');
 const debounce = require('lodash.debounce');
 const useTranslate = require('stremio/common/useTranslate');
 const { useStreamingServer, useNotifications, withCoreSuspender, getVisibleChildrenRange, useProfile } = require('stremio/common');
-const { ContinueWatchingItem, EventModal, MainNavBars, MetaItem, MetaRow } = require('stremio/components');
+const { ContinueWatchingItem, EventModal, MainNavBars, MetaItem, MetaRow, Button, Image } = require('stremio/components');
+const { default: getMetaDetailsHref } = require('stremio/common/getMetaDetailsHref');
 const useBoard = require('./useBoard');
 const useContinueWatchingPreview = require('./useContinueWatchingPreview');
 const styles = require('./styles');
@@ -21,6 +22,10 @@ const Board = () => {
     const notifications = useNotifications();
     const profile = useProfile();
     const boardCatalogsOffset = continueWatchingPreview.items.length > 0 ? 1 : 0;
+    const spotlight = React.useMemo(() => {
+        const readyCatalog = board.catalogs.find((catalog) => catalog.content?.type === 'Ready' && catalog.content.content.length > 0);
+        return readyCatalog?.content.content[0] || null;
+    }, [board.catalogs]);
     const scrollContainerRef = React.useRef();
     const showStreamingServerWarning = React.useMemo(() => {
         return streamingServer.settings !== null && streamingServer.settings.type === 'Err' && (
@@ -50,6 +55,23 @@ const Board = () => {
             <EventModal />
             <MainNavBars className={styles['board-content-container']} route={'board'}>
                 <div ref={scrollContainerRef} className={styles['board-content']} onScroll={onScroll}>
+                    {
+                        spotlight ?
+                            <section className={styles['cinematic-spotlight']}>
+                                <Image className={styles['spotlight-art']} src={spotlight.background || spotlight.poster} alt={' '} />
+                                <div className={styles['spotlight-shade']} />
+                                <div className={styles['spotlight-copy']}>
+                                    <div className={styles['spotlight-kicker']} aria-hidden={'true'} />
+                                    <h1 className={styles['spotlight-title']}>{spotlight.name}</h1>
+                                    <div className={styles['spotlight-type']}>{spotlight.type}</div>
+                                    <Button className={styles['spotlight-action']} title={spotlight.name} href={getMetaDetailsHref(spotlight.deepLinks)}>
+                                        <span aria-hidden={'true'} />
+                                    </Button>
+                                </div>
+                            </section>
+                            :
+                            <div className={styles['spotlight-placeholder']} />
+                    }
                     {
                         continueWatchingPreview.items.length > 0 ?
                             <MetaRow

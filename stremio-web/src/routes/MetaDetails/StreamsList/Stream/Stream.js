@@ -12,7 +12,7 @@ const { default: useRouteFocused } = require('stremio/common/useRouteFocused');
 const StreamPlaceholder = require('./StreamPlaceholder');
 const styles = require('./styles');
 
-const Stream = ({ className, videoId, videoReleased, addonName, name, description, thumbnail, progress, deepLinks, ...props }) => {
+const Stream = ({ className, videoId, videoReleased, addonName, badges, bestMatch, name, description, thumbnail, progress, deepLinks, ...props }) => {
     const profile = useProfile();
     const toast = useToast();
     const platform = usePlatform();
@@ -238,7 +238,11 @@ const Stream = ({ className, videoId, videoReleased, addonName, name, descriptio
 
     const renderLabel = React.useMemo(() => function renderLabel({ className, children, ...props }) {
         return (
-            <Button className={classnames(className, styles['stream-container'])} title={addonName} href={usesCinematicPlayer ? null : href} target={usesCinematicPlayer ? null : target} download={usesCinematicPlayer ? null : download} onClick={onClick} {...props}>
+            <Button className={classnames(className, styles['stream-container'], { [styles['best-match']]: bestMatch })} title={addonName} href={usesCinematicPlayer ? null : href} target={usesCinematicPlayer ? null : target} download={usesCinematicPlayer ? null : download} onClick={onClick} {...props}>
+                <div className={styles['source-rank']}>
+                    {bestMatch ? <span className={styles['best-label']} aria-hidden={'true'} /> : null}
+                    <span className={styles['provider-label']}>{addonName}</span>
+                </div>
                 <div className={styles['info-container']}>
                     {
                         typeof thumbnail === 'string' && thumbnail.length > 0 ?
@@ -265,7 +269,13 @@ const Stream = ({ className, videoId, videoReleased, addonName, name, descriptio
                             null
                     }
                 </div>
-                <div className={styles['description-container']} title={description}>{description}</div>
+                <div className={styles['source-copy']}>
+                    <div className={styles['source-name']}>{name || addonName}</div>
+                    <div className={styles['source-badges']}>
+                        {(badges || []).slice(0, 5).map((badge) => <span className={styles['source-badge']} key={badge}>{badge}</span>)}
+                    </div>
+                    <div className={styles['description-container']} title={description}>{description}</div>
+                </div>
                 <Icon className={styles['icon']} name={'play'} />
                 {children}
             </Button>
@@ -334,6 +344,8 @@ Stream.propTypes = {
     videoId: PropTypes.string,
     videoReleased: PropTypes.instanceOf(Date),
     addonName: PropTypes.string,
+    badges: PropTypes.arrayOf(PropTypes.string),
+    bestMatch: PropTypes.bool,
     name: PropTypes.string,
     description: PropTypes.string,
     thumbnail: PropTypes.string,

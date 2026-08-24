@@ -13,6 +13,7 @@ const Stream = require('./Stream');
 const styles = require('./styles');
 const { usePlatform, useProfile } = require('stremio/common');
 const { default: SeasonEpisodePicker } = require('../EpisodePicker');
+const { rankSources } = require('./sourceIntelligence');
 
 const ALL_ADDONS_KEY = 'ALL';
 const PREFERRED_ADDONS_KEY = 'cinematic.preferredAddons';
@@ -104,14 +105,15 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
         });
     }, [streamsByAddon, preferredAddons]);
     const filteredStreams = React.useMemo(() => {
-        return selectedAddon === ALL_ADDONS_KEY ?
+        const candidates = selectedAddon === ALL_ADDONS_KEY ?
             orderedAddonKeys.map((key) => streamsByAddon[key].streams).flat(1)
             :
             streamsByAddon[selectedAddon] ?
                 streamsByAddon[selectedAddon].streams
                 :
                 [];
-    }, [streamsByAddon, selectedAddon, orderedAddonKeys]);
+        return rankSources(candidates, preferredAddons);
+    }, [streamsByAddon, selectedAddon, orderedAddonKeys, preferredAddons]);
     const selectableOptions = React.useMemo(() => {
         return {
             options: [
@@ -138,10 +140,12 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
         const language = i18n.resolvedLanguage || i18n.language || 'en';
         return language.startsWith('he') ? {
             title: 'בחרו מקור והתחילו לצפות',
-            ready: 'מוכנים'
+            ready: 'מוכנים עכשיו',
+            checking: 'עדיין נבדקים'
         } : {
             title: 'Choose a source and start watching',
-            ready: 'ready'
+            ready: 'ready now',
+            checking: 'still checking'
         };
     }, [i18n.resolvedLanguage, i18n.language]);
 
@@ -176,7 +180,14 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
             <div className={styles['watch-heading']}>
                 <div className={styles['watch-kicker']} aria-hidden={'true'} />
                 <div className={styles['watch-title']}>{watchCopy.title}</div>
-                <div className={styles['watch-status']}>{filteredStreams.length} {watchCopy.ready}</div>
+                <div className={classnames(styles['watch-status'], { [styles['status-empty']]: filteredStreams.length === 0 })}>
+                    <span>{filteredStreams.length} {watchCopy.ready}</span>
+                    {
+                        countLoadingAddons > 0 ?
+                            <span className={styles['watch-checking']}>· {countLoadingAddons} {watchCopy.checking}</span>
+                            : null
+                    }
+                </div>
             </div>
             {
                 props.streams.length === 0 ?
@@ -229,6 +240,8 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
                                             videoId={video?.id}
                                             videoReleased={video?.released}
                                             addonName={stream.addonName}
+                                            badges={stream.intelligence.badges}
+                                            bestMatch={stream.isBestMatch}
                                             name={stream.name}
                                             description={stream.description}
                                             thumbnail={stream.thumbnail}
@@ -247,17 +260,6 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
                                             null
                                     }
                                 </div>
-                                {
-                                    countLoadingAddons > 0 ?
-                                        <div className={styles['addons-loading-container']}>
-                                            <div className={styles['addons-loading']}>
-                                                {countLoadingAddons} {t('MOBILE_ADDONS_LOADING')}
-                                            </div>
-                                            <span className={styles['addons-loading-bar']}></span>
-                                        </div>
-                                        :
-                                        null
-                                }
                             </React.Fragment>
             }
         </div>
