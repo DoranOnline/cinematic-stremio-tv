@@ -42,7 +42,8 @@ public class MainActivity extends BridgeActivity {
         webView.getSettings().setUserAgentString(
             webView.getSettings().getUserAgentString() + " NuvyroTV/2.2.2"
         );
-        webView.addJavascriptInterface(new NativeStatusBridge(), "CinematicAndroid");
+        webView.addJavascriptInterface(
+            new NativeStatusBridge(), WebNativeBridgeContract.LEGACY_OBJECT_NAME);
         webView.requestFocus();
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
@@ -62,7 +63,8 @@ public class MainActivity extends BridgeActivity {
             webView.post(() -> {
                 webView.requestFocus();
                 webView.evaluateJavascript(
-                    "(function(){var e=document.querySelector('[data-cinematic-return-focus]');" +
+                    "(function(){var e=document.querySelector('[" +
+                    WebNativeBridgeContract.RETURN_FOCUS_ATTRIBUTE + "]');" +
                     "if(e){e.focus({preventScroll:true});e.scrollIntoView({block:'center',inline:'center'});return true;}" +
                     "return false;})()",
                     null
@@ -86,7 +88,8 @@ public class MainActivity extends BridgeActivity {
         final WebView webView = getBridge() == null ? null : getBridge().getWebView();
         if (webView != null) {
             webView.post(() -> webView.evaluateJavascript(
-                "window.dispatchEvent(new CustomEvent('nuvyro-playback-ended'));", null));
+                "window.dispatchEvent(new CustomEvent('" +
+                    WebNativeBridgeContract.EVENT_PLAYBACK_ENDED + "'));", null));
         }
     }
 
@@ -180,11 +183,12 @@ public class MainActivity extends BridgeActivity {
             if (!"http".equalsIgnoreCase(uri.getScheme()) && !"https".equalsIgnoreCase(uri.getScheme())) {
                 return false;
             }
+            final PlaybackSession session = PlaybackSession.fromLegacy(streamUrl, videoId, title);
             runOnUiThread(() -> {
                 final Intent intent = new Intent(MainActivity.this, NativePlayerActivity.class);
                 intent.putExtra(NativePlayerActivity.EXTRA_STREAM_URL, streamUrl);
-                intent.putExtra(NativePlayerActivity.EXTRA_VIDEO_ID, videoId);
-                intent.putExtra(NativePlayerActivity.EXTRA_TITLE, title);
+                intent.putExtra(NativePlayerActivity.EXTRA_VIDEO_ID, session.getVideoId());
+                intent.putExtra(NativePlayerActivity.EXTRA_TITLE, session.getTitle());
                 startActivityForResult(intent, PLAYER_REQUEST_CODE);
             });
             return true;
