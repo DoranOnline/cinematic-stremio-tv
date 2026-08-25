@@ -89,6 +89,17 @@ const App = () => {
     }, []);
 
     React.useEffect(() => {
+        const onNativeBackRequest = (event) => {
+            const route = window.location.hash.slice(1) || '/';
+            if (route === '/' || route === '') return;
+            event.preventDefault();
+            navigate(-1);
+        };
+        window.addEventListener('nuvyro-native-back-request', onNativeBackRequest);
+        return () => window.removeEventListener('nuvyro-native-back-request', onNativeBackRequest);
+    }, [navigate]);
+
+    React.useEffect(() => {
         const onChromecastStateChange = () => {
             if (services.chromecast.active) {
                 services.chromecast.transport.setOptions({

@@ -52,7 +52,7 @@ public final class NativePlayerActivity extends Activity {
     static final String EXTRA_TITLE = "title";
     static final String EXTRA_PLAYBACK_ENDED = "playback_ended";
 
-    private static final long FALLBACK_TIMEOUT_MS = 8_000L;
+    private static final long SLOW_SOURCE_NOTICE_MS = 15_000L;
     private static final long SAVE_INTERVAL_MS = 10_000L;
     private static final long CONTROLS_TIMEOUT_MS = 6_000L;
     private static final long SEEK_STEP_MS = 10_000L;
@@ -69,6 +69,8 @@ public final class NativePlayerActivity extends Activity {
     private LinearLayout statusPanel;
     private FrameLayout controlsPanel;
     private TextView statusText;
+    private LinearLayout statusActions;
+    private Button statusPrimaryButton;
     private TextView titleText;
     private TextView timeText;
     private SeekBar seekBar;
@@ -100,6 +102,18 @@ public final class NativePlayerActivity extends Activity {
     private String selectedLanguage;
     private boolean controlsLocked;
     private int brightnessPercent = 70;
+    private PlayerState playerState = PlayerState.IDLE;
+
+    private final Runnable slowSourceNoticeRunnable = () -> {
+        if (!firstFrameRendered && !usingVlc && !isFinishing()) {
+            playerState = PlayerState.BUFFERING;
+            showRecoveryStatus(
+                text("המקור הזה לוקח יותר זמן מהרגיל", "This source is taking longer than expected"),
+                text("להמשיך לחכות", "Still waiting"),
+                () -> showStatus(text("ממשיך לחכות למקור…", "Still waiting for the source…"))
+            );
+        }
+    };
 
     private final Runnable progressTicker = new Runnable() {
         @Override
@@ -176,6 +190,18 @@ public final class NativePlayerActivity extends Activity {
         statusText.setPadding(0, 22, 0, 18);
         statusText.setText("NUVYRO מכין את הווידאו…");
         statusPanel.addView(statusText);
+        statusActions = new LinearLayout(this);
+        statusActions.setOrientation(LinearLayout.HORIZONTAL);
+        statusActions.setGravity(Gravity.CENTER);
+        statusActions.setVisibility(View.GONE);
+        statusPrimaryButton = compactButton("להמשיך לחכות", view -> {});
+        statusActions.addView(statusPrimaryButton);
+        final Button compatibilityButton = compactButton("מצב תאימות", view ->
+            startVlcFallback(text("פותח במצב תאימות…", "Opening compatibility mode…")));
+        statusActions.addView(compatibilityButton);
+        final Button chooseSourceButton = compactButton("מקור אחר", view -> finishPlayer());
+        statusActions.addView(chooseSourceButton);
+        statusPanel.addView(statusActions);
         final FrameLayout.LayoutParams params = wrapContent(Gravity.CENTER);
         root.addView(statusPanel, params);
     }
@@ -194,7 +220,7 @@ public final class NativePlayerActivity extends Activity {
         topBar.setPadding(44, 26, 36, 0);
         final TextView brand = new TextView(this);
         brand.setText("N");
-        brand.setTextColor(0xFFE50914);
+        brand.setTextColor(0xFFF02D62);
         brand.setTextSize(25f);
         brand.setPadding(0, 0, 16, 0);
         topBar.addView(brand);
@@ -336,6 +362,7 @@ public final class NativePlayerActivity extends Activity {
     }
 
     private void startSelectedEngine() {
+        playerState = PlayerState.RESOLVING_SOURCE;
         if (isLocalStreamServerUrl(streamUrl)) {
             startVlcFallback("פותח במצב תאימות לטלוויזיה…");
         } else {
@@ -345,6 +372,7 @@ public final class NativePlayerActivity extends Activity {
 
     private void startMedia3() {
         releasePlayers();
+        playerState = PlayerState.PREPARING;
         usingVlc = false;
         firstFrameRendered = false;
         playerView.setVisibility(View.VISIBLE);
@@ -365,33 +393,54 @@ public final class NativePlayerActivity extends Activity {
         );
         exoPlayer.addListener(new Player.Listener() {
             @Override public void onPlayerError(PlaybackException error) {
-                startVlcFallback("הפורמט דורש נגן תאימות…");
+                handler.removeCallbacks(slowSourceNoticeRunnable);
+                if (PlaybackFailurePolicy.shouldSwitchEngine(error.getErrorCodeName())) {
+                    playerState = PlayerState.SWITCHING_ENGINE;
+                    startVlcFallback(text("הפורמט דורש מצב תאימות…", "This format needs compatibility mode…"));
+                } else {
+                    playerState = PlayerState.ERROR;
+                    showRecoveryStatus(
+                        text("לא הצלחנו להתחבר למקור הזה", "We could not connect to this source"),
+                        text("נסה שוב", "Try again"),
+                        NativePlayerActivity.this::retryCurrentEngine
+                    );
+                }
             }
             @Override public void onRenderedFirstFrame() {
+                handler.removeCallbacks(slowSourceNoticeRunnable);
                 firstFrameRendered = true;
+                playerState = PlayerState.PLAYING;
                 hideStatus();
                 applyPendingResume();
                 scheduleControlsHide();
             }
             @Override public void onPlaybackStateChanged(int state) {
-                if (state == Player.STATE_BUFFERING) showStatus("טוען וידאו…");
-                if (state == Player.STATE_READY) applyPendingResume();
-                if (state == Player.STATE_ENDED) reportPlaybackEnded();
+                if (state == Player.STATE_BUFFERING) {
+                    playerState = PlayerState.BUFFERING;
+                    showStatus(text("טוען וידאו…", "Buffering video…"));
+                }
+                if (state == Player.STATE_READY) {
+                    playerState = exoPlayer != null && exoPlayer.isPlaying() ? PlayerState.PLAYING : PlayerState.PAUSED;
+                    applyPendingResume();
+                }
+                if (state == Player.STATE_ENDED) {
+                    playerState = PlayerState.ENDED;
+                    reportPlaybackEnded();
+                }
             }
         });
         playerView.setPlayer(exoPlayer);
         exoPlayer.setMediaItem(MediaItem.fromUri(Uri.parse(streamUrl)));
         exoPlayer.prepare();
         exoPlayer.play();
-        handler.postDelayed(() -> {
-            if (!firstFrameRendered && !usingVlc && !isFinishing()) {
-                startVlcFallback("מנסה מצב תאימות…");
-            }
-        }, FALLBACK_TIMEOUT_MS);
+        handler.removeCallbacks(slowSourceNoticeRunnable);
+        handler.postDelayed(slowSourceNoticeRunnable, SLOW_SOURCE_NOTICE_MS);
     }
 
     private void startVlcFallback(String message) {
         if (usingVlc || isFinishing()) return;
+        handler.removeCallbacks(slowSourceNoticeRunnable);
+        playerState = PlayerState.SWITCHING_ENGINE;
         usingVlc = true;
         vlcStarted = false;
         initialTrackPreferencesApplied = false;
@@ -415,6 +464,7 @@ public final class NativePlayerActivity extends Activity {
         vlcPlayer.setEventListener(event -> {
             if (event.type == MediaPlayer.Event.Playing || event.type == MediaPlayer.Event.Vout) {
                 vlcStarted = true;
+                playerState = PlayerState.PLAYING;
                 hideStatus();
                 applyPendingResume();
                 if (!initialTrackPreferencesApplied) {
@@ -423,9 +473,15 @@ public final class NativePlayerActivity extends Activity {
                 }
                 scheduleControlsHide();
             } else if (event.type == MediaPlayer.Event.Buffering && !vlcStarted) {
+                playerState = PlayerState.BUFFERING;
                 showStatus("טוען במצב תאימות…");
             } else if (event.type == MediaPlayer.Event.EncounteredError) {
-                showStatus(text("המקור הזה לא מגיב. חזור ובחר מקור אחר.", "This source is not responding. Go back and choose another source."));
+                playerState = PlayerState.ERROR;
+                showRecoveryStatus(
+                    text("המקור הזה לא מגיב", "This source is not responding"),
+                    text("נסה שוב", "Try again"),
+                    this::retryCurrentEngine
+                );
             } else if (event.type == MediaPlayer.Event.EndReached) {
                 runOnUiThread(this::reportPlaybackEnded);
             }
@@ -462,6 +518,7 @@ public final class NativePlayerActivity extends Activity {
             if (vlcPlayer.isPlaying()) vlcPlayer.pause(); else vlcPlayer.play();
         }
         updatePlayPauseLabel();
+        playerState = isPlaying() ? PlayerState.PLAYING : PlayerState.PAUSED;
         showControls(false);
     }
 
@@ -714,9 +771,34 @@ public final class NativePlayerActivity extends Activity {
     private void showStatus(String text) {
         runOnUiThread(() -> {
             statusText.setText(text);
+            if (statusActions != null) statusActions.setVisibility(View.GONE);
             statusPanel.setVisibility(View.VISIBLE);
             if (primaryControls != null) primaryControls.setVisibility(View.INVISIBLE);
         });
+    }
+
+    private void showRecoveryStatus(String message, String primaryLabel, Runnable primaryAction) {
+        runOnUiThread(() -> {
+            statusText.setText(message);
+            if (statusActions != null) {
+                statusPrimaryButton.setText(primaryLabel);
+                statusPrimaryButton.setOnClickListener(view -> primaryAction.run());
+                statusActions.setVisibility(View.VISIBLE);
+                statusPrimaryButton.requestFocus();
+            }
+            statusPanel.setVisibility(View.VISIBLE);
+            if (primaryControls != null) primaryControls.setVisibility(View.INVISIBLE);
+        });
+    }
+
+    private void retryCurrentEngine() {
+        if (usingVlc) {
+            releasePlayers();
+            usingVlc = false;
+            startVlcFallback(text("מנסה שוב במצב תאימות…", "Retrying compatibility mode…"));
+        } else {
+            startMedia3();
+        }
     }
 
     private void showStatusTemporarily(String text) {
@@ -791,6 +873,7 @@ public final class NativePlayerActivity extends Activity {
     @Override
     protected void onStop() {
         saveProgress();
+        playerState = PlayerState.IDLE;
         handler.removeCallbacksAndMessages(null);
         releasePlayers();
         super.onStop();
@@ -823,9 +906,9 @@ public final class NativePlayerActivity extends Activity {
             new int[]{Color.WHITE, 0xFFE8E8EA}
         ));
         final GradientDrawable focused = new GradientDrawable();
-        focused.setColor(0xFFE50914);
+        focused.setColor(0xFFF02D62);
         focused.setCornerRadius(18f);
-        focused.setStroke(5, Color.WHITE);
+        focused.setStroke(4, 0xFFF6F1EA);
         final GradientDrawable normal = new GradientDrawable();
         normal.setColor(0xCC34363D);
         normal.setCornerRadius(18f);

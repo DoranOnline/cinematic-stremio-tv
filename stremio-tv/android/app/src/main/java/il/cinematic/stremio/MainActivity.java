@@ -40,7 +40,7 @@ public class MainActivity extends BridgeActivity {
         webView.setBackgroundColor(Color.rgb(7, 8, 10));
         webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
         webView.getSettings().setUserAgentString(
-            webView.getSettings().getUserAgentString() + " NuvyroTV/2.2.2"
+            webView.getSettings().getUserAgentString() + " NuvyroTV/2.3.0"
         );
         webView.addJavascriptInterface(
             new NativeStatusBridge(), WebNativeBridgeContract.LEGACY_OBJECT_NAME);
@@ -98,9 +98,13 @@ public class MainActivity extends BridgeActivity {
         final String url = webView.getUrl();
         Log.i("CinematicBack", "Back requested at " + url);
         if (url != null && url.contains("#/") && !url.endsWith("#/")) {
-            // A restored WebView route may have no usable browser history.
-            // Returning to the board is deterministic and never exits the TV app.
-            webView.evaluateJavascript("window.location.hash='#/';", null);
+            final String script =
+                "(function(){var e=new CustomEvent('" +
+                WebNativeBridgeContract.EVENT_NATIVE_BACK_REQUEST +
+                "',{cancelable:true});window.dispatchEvent(e);return e.defaultPrevented;})()";
+            webView.evaluateJavascript(script, handled -> {
+                if (!"true".equals(handled)) showExitConfirmation();
+            });
             return;
         }
         showExitConfirmation();

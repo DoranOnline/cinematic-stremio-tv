@@ -7,6 +7,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.pm.PackageInfo;
+import android.content.pm.Signature;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -197,7 +199,42 @@ final class AppUpdateManager {
 
     private boolean isValidApk(File apk) {
         if (apk == null || !apk.isFile() || apk.length() < 1_000_000L) return false;
-        return activity.getPackageManager().getPackageArchiveInfo(
-            apk.getAbsolutePath(), PackageManager.GET_ACTIVITIES) != null;
+        try {
+            final PackageManager manager = activity.getPackageManager();
+            final int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                ? PackageManager.GET_SIGNING_CERTIFICATES
+                : PackageManager.GET_SIGNATURES;
+            final PackageInfo archive = manager.getPackageArchiveInfo(apk.getAbsolutePath(), flags);
+            final PackageInfo installed = manager.getPackageInfo(activity.getPackageName(), flags);
+            return archive != null && activity.getPackageName().equals(archive.packageName) &&
+                signaturesMatch(installed, archive);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static boolean signaturesMatch(PackageInfo installed, PackageInfo archive) {
+        final Signature[] current;
+        final Signature[] candidate;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            if (installed.signingInfo == null || archive.signingInfo == null) return false;
+            current = installed.signingInfo.getApkContentsSigners();
+            candidate = archive.signingInfo.getApkContentsSigners();
+        } else {
+            current = installed.signatures;
+            candidate = archive.signatures;
+        }
+        if (current == null || candidate == null || current.length != candidate.length) return false;
+        for (Signature expected : current) {
+            boolean found = false;
+            for (Signature actual : candidate) {
+                if (expected.equals(actual)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return false;
+        }
+        return true;
     }
 }

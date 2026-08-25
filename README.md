@@ -69,3 +69,12 @@ This project does not provide, host, index, or sell media. It is an independent 
 3. In `stremio-tv/android`, run `./gradlew assembleDebug`.
 
 Licensed under GPL-2.0, following the upstream Stremio Web license.
+
+## What v2.3 improves
+
+- Slow sources are no longer treated as player failure after eight seconds.
+- Media3 switches to VLC automatically only for evidenced decoder/container incompatibility.
+- Slow and failed sources expose clear wait, compatibility and source-recovery actions.
+- Android TV Back now follows the real React navigation history instead of jumping to Home.
+- Update APKs must match both the NUVYRO package and the currently installed signing identity.
+- NUVYRO now uses its own electric-crimson/violet visual identity instead of Netflix red.
