@@ -7,3 +7,4 @@ stremio-tv/android/app/src/main/assets/public/
 local.properties
 .idea/
 *.iml
+.gstack/
