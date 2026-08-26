@@ -18,7 +18,7 @@ const Board = () => {
     const t = useTranslate();
     const streamingServer = useStreamingServer();
     const continueWatchingPreview = useContinueWatchingPreview();
-    const [board, loadBoardRows] = useBoard();
+    const [board, loadBoardRows, refreshBoard] = useBoard();
     const notifications = useNotifications();
     const profile = useProfile();
     const boardCatalogsOffset = continueWatchingPreview.items.length > 0 ? 1 : 0;
@@ -50,6 +50,17 @@ const Board = () => {
     React.useLayoutEffect(() => {
         onVisibleRangeChange();
     }, [board.catalogs, onVisibleRangeChange]);
+    React.useEffect(() => {
+        const refreshWhenVisible = () => {
+            if (document.visibilityState === 'visible') refreshBoard();
+        };
+        const interval = window.setInterval(refreshWhenVisible, 5 * 60 * 1000);
+        document.addEventListener('visibilitychange', refreshWhenVisible);
+        return () => {
+            window.clearInterval(interval);
+            document.removeEventListener('visibilitychange', refreshWhenVisible);
+        };
+    }, [refreshBoard]);
     return (
         <div className={styles['board-container']}>
             <EventModal />

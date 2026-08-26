@@ -228,7 +228,7 @@ public final class NativePlayerActivity extends Activity {
         final Button compatibilityButton = compactButton("מצב תאימות", view ->
             startVlcFallback(text("פותח במצב תאימות…", "Opening compatibility mode…")));
         statusActions.addView(compatibilityButton);
-        final Button chooseSourceButton = compactButton("מקור אחר", view -> finishPlayer());
+        final Button chooseSourceButton = compactButton("מקור אחר", view -> showSourceMenu());
         statusActions.addView(chooseSourceButton);
         statusPanel.addView(statusActions);
         final FrameLayout.LayoutParams params = wrapContent(Gravity.CENTER);

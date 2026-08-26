@@ -32,8 +32,9 @@ const writeIds = (key, value) => {
 
 const Live = () => {
     const { i18n } = useTranslation();
-    const [board, loadBoardRows] = useBoard();
+    const [board, loadBoardRows, refreshBoard] = useBoard();
     const [filter, setFilter] = React.useState('all');
+    const [selectedId, setSelectedId] = React.useState(null);
     const [favorites, setFavorites] = React.useState(() => readIds(FAVORITES_KEY));
     const [recent, setRecent] = React.useState(() => readIds(RECENT_KEY));
     const copy = React.useMemo(() => (i18n.resolvedLanguage || i18n.language || 'en').startsWith('he') ? ({
@@ -42,6 +43,9 @@ const Live = () => {
         all: 'הכול',
         favorites: 'מועדפים',
         recent: 'אחרונים',
+        refresh: 'רענון',
+        watch: 'פתח ערוץ',
+        connecting: 'מרעננים את רשימת הערוצים…',
         live: 'בשידור חי',
         emptyTitle: 'אין עדיין ערוצי Live',
         emptyCopy: 'התקן תוסף חוקי שתומך בקטלוג TV או Channel והוא יופיע כאן אוטומטית.',
@@ -52,6 +56,9 @@ const Live = () => {
         all: 'All',
         favorites: 'Favorites',
         recent: 'Recent',
+        refresh: 'Refresh',
+        watch: 'Open channel',
+        connecting: 'Refreshing your channel list…',
         live: 'Live now',
         emptyTitle: 'No Live channels yet',
         emptyCopy: 'Install a legal add-on with a TV or Channel catalog and it will appear here automatically.',
@@ -61,6 +68,18 @@ const Live = () => {
     React.useEffect(() => {
         loadBoardRows({ start: 0, end: 60 });
     }, [loadBoardRows]);
+
+    React.useEffect(() => {
+        const refreshWhenVisible = () => {
+            if (document.visibilityState === 'visible') refreshBoard();
+        };
+        const interval = window.setInterval(refreshWhenVisible, 5 * 60 * 1000);
+        document.addEventListener('visibilitychange', refreshWhenVisible);
+        return () => {
+            window.clearInterval(interval);
+            document.removeEventListener('visibilitychange', refreshWhenVisible);
+        };
+    }, [refreshBoard]);
 
     const channels = React.useMemo(() => {
         const seen = new Set();
@@ -87,6 +106,8 @@ const Live = () => {
         }
         return channels;
     }, [channels, favorites, recent, filter]);
+    const selectedChannel = React.useMemo(() => visibleChannels.find((item) => item.id === selectedId) || visibleChannels[0] || null, [visibleChannels, selectedId]);
+    const loading = React.useMemo(() => (board.catalogs || []).some((catalog) => catalog.content?.type === 'Loading'), [board.catalogs]);
 
     const rememberRecent = React.useCallback((id) => {
         if (typeof id !== 'string') return;
@@ -111,57 +132,76 @@ const Live = () => {
         <MainNavBars className={styles['live-container']} route={'live'}>
             <div className={styles['live-content']}>
                 <header className={styles['hero']}>
-                    <div className={styles['eyebrow']}><span />{copy.live}</div>
-                    <h1>{copy.title}</h1>
-                    <p>{copy.subtitle}</p>
-                </header>
-                <nav className={styles['filters']}>
-                    {[
-                        ['all', copy.all],
-                        ['favorites', copy.favorites],
-                        ['recent', copy.recent]
-                    ].map(([value, label]) => (
-                        <Button key={value} className={classnames(styles['filter'], { [styles['selected']]: filter === value })} onClick={() => setFilter(value)}>
-                            {label}
+                    <div><div className={styles['eyebrow']}><span />{copy.live}</div><h1>{copy.title}</h1><p>{copy.subtitle}</p></div>
+                    <nav className={styles['filters']}>
+                        {[
+                            ['all', copy.all],
+                            ['favorites', copy.favorites],
+                            ['recent', copy.recent]
+                        ].map(([value, label]) => (
+                            <Button key={value} className={classnames(styles['filter'], { [styles['selected']]: filter === value })} onClick={() => setFilter(value)}>
+                                {label}
+                            </Button>
+                        ))}
+                        <Button className={styles['refresh']} title={copy.refresh} onClick={refreshBoard}>
+                            <Icon name={'cloud-sync'} /><span>{copy.refresh}</span>
                         </Button>
-                    ))}
-                </nav>
+                    </nav>
+                </header>
                 {
-                    channels.length === 0 ?
-                        <section className={styles['empty']}>
-                            <Icon className={styles['empty-icon']} name={'tv'} />
-                            <h2>{copy.emptyTitle}</h2>
-                            <p>{copy.emptyCopy}</p>
-                        </section>
-                        : visibleChannels.length === 0 ?
-                            <section className={styles['empty']}><p>{copy.noMatches}</p></section>
-                            :
-                            <section className={styles['channels']}>
-                                {visibleChannels.map((channel) => (
-                                    <article key={channel.id} className={styles['channel-card']}>
-                                        <Button
-                                            className={styles['channel-action']}
-                                            href={getMetaDetailsHref(channel.deepLinks)}
-                                            onClick={() => rememberRecent(channel.id)}
-                                        >
-                                            <Image className={styles['art']} src={channel.background || channel.poster} alt={' '} />
-                                            <div className={styles['shade']} />
-                                            <div className={styles['channel-copy']}>
-                                                <span className={styles['live-badge']}>{copy.live}</span>
-                                                <strong>{channel.name}</strong>
-                                                {channel.catalogName ? <small>{channel.catalogName}</small> : null}
-                                            </div>
-                                            <Icon className={styles['play']} name={'play'} />
-                                        </Button>
-                                        <Button
-                                            className={classnames(styles['favorite'], { [styles['active']]: favorites.includes(channel.id) })}
-                                            onClick={(event) => toggleFavorite(event, channel.id)}
-                                        >
-                                            <Icon name={favorites.includes(channel.id) ? 'heart' : 'heart-outline'} />
-                                        </Button>
-                                    </article>
-                                ))}
+                    channels.length === 0 && loading ?
+                        <section className={styles['loading']}><div className={styles['spinner']} /><strong>{copy.connecting}</strong></section>
+                        : channels.length === 0 ?
+                            <section className={styles['empty']}>
+                                <Icon className={styles['empty-icon']} name={'tv'} />
+                                <h2>{copy.emptyTitle}</h2>
+                                <p>{copy.emptyCopy}</p>
                             </section>
+                            : visibleChannels.length === 0 ?
+                                <section className={styles['empty']}><p>{copy.noMatches}</p></section>
+                                :
+                                <section className={styles['live-workspace']}>
+                                    <div className={styles['preview']}>
+                                        <Image className={styles['preview-art']} src={selectedChannel.background || selectedChannel.poster} alt={' '} />
+                                        <div className={styles['preview-shade']} />
+                                        <div className={styles['preview-copy']}>
+                                            <span className={styles['live-badge']}>{copy.live}</span>
+                                            <h2>{selectedChannel.name}</h2>
+                                            {selectedChannel.catalogName ? <p>{selectedChannel.catalogName}</p> : null}
+                                            <Button className={styles['watch']} href={getMetaDetailsHref(selectedChannel.deepLinks)} onClick={() => rememberRecent(selectedChannel.id)}>
+                                                <Icon name={'play'} /><span>{copy.watch}</span>
+                                            </Button>
+                                        </div>
+                                        {loading ? <div className={styles['updating']}><div className={styles['spinner']} />{copy.connecting}</div> : null}
+                                    </div>
+                                    <div className={styles['channels']}>
+                                        {visibleChannels.map((channel) => (
+                                            <article key={channel.id} className={classnames(styles['channel-card'], { [styles['selected-channel']]: selectedChannel.id === channel.id })}>
+                                                <Button
+                                                    className={styles['channel-action']}
+                                                    href={getMetaDetailsHref(channel.deepLinks)}
+                                                    onClick={() => rememberRecent(channel.id)}
+                                                    onFocus={() => setSelectedId(channel.id)}
+                                                >
+                                                    <Image className={styles['art']} src={channel.background || channel.poster} alt={' '} />
+                                                    <div className={styles['shade']} />
+                                                    <div className={styles['channel-copy']}>
+                                                        <span className={styles['live-badge']}>{copy.live}</span>
+                                                        <strong>{channel.name}</strong>
+                                                        {channel.catalogName ? <small>{channel.catalogName}</small> : null}
+                                                    </div>
+                                                    <Icon className={styles['play']} name={'play'} />
+                                                </Button>
+                                                <Button
+                                                    className={classnames(styles['favorite'], { [styles['active']]: favorites.includes(channel.id) })}
+                                                    onClick={(event) => toggleFavorite(event, channel.id)}
+                                                >
+                                                    <Icon name={favorites.includes(channel.id) ? 'heart' : 'heart-outline'} />
+                                                </Button>
+                                            </article>
+                                        ))}
+                                    </div>
+                                </section>
                 }
             </div>
         </MainNavBars>

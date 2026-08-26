@@ -6,13 +6,14 @@ const { useModelState } = require('stremio/common');
 
 const useBoard = () => {
     const core = useCore();
+    const [refreshVersion, setRefreshVersion] = React.useState(0);
     const action = React.useMemo(() => ({
         action: 'Load',
         args: {
             model: 'CatalogsWithExtra',
             args: { extra: [] }
         }
-    }), []);
+    }), [refreshVersion]);
     const loadRange = React.useCallback((range) => {
         core.transport.dispatch({
             action: 'CatalogsWithExtra',
@@ -22,8 +23,9 @@ const useBoard = () => {
             }
         }, 'board');
     }, []);
+    const refresh = React.useCallback(() => setRefreshVersion((value) => value + 1), []);
     const board = useModelState({ model: 'board', action });
-    return [board, loadRange];
+    return [board, loadRange, refresh];
 };
 
 module.exports = useBoard;

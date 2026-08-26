@@ -114,12 +114,13 @@ const MetaDetails = () => {
     }, [urlParams, location]);
 
     React.useEffect(() => {
-        const handleNativePlaybackEnded = () => {
+        const handleNativePlaybackEnded = (event) => {
             const videos = metaDetails.metaItem?.content?.type === 'Ready' ?
                 metaDetails.metaItem.content.content.videos
                 :
                 null;
             if (!video || !Array.isArray(videos)) return;
+            if (typeof event.detail?.videoId === 'string' && event.detail.videoId !== video.id) return;
             core.transport.dispatch({
                 action: 'MetaDetails',
                 args: {
