@@ -12,14 +12,15 @@ const { default: useRouteFocused } = require('stremio/common/useRouteFocused');
 const StreamPlaceholder = require('./StreamPlaceholder');
 const styles = require('./styles');
 
-const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, bestMatch, name, description, thumbnail, progress, deepLinks, ...props }) => {
+const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, bestMatch, name, description, thumbnail, progress, deepLinks, playbackSources, ...props }) => {
     const profile = useProfile();
     const toast = useToast();
     const platform = usePlatform();
     const core = useCore();
     const routeFocused = useRouteFocused();
     const nativePlayback = typeof window !== 'undefined' ? window.CinematicAndroid : null;
-    const usesCinematicPlayer = typeof nativePlayback?.openNativePlayerSession === 'function' ||
+    const usesCinematicPlayer = typeof nativePlayback?.openNativePlayerSessionV2 === 'function' ||
+        typeof nativePlayback?.openNativePlayerSession === 'function' ||
         typeof nativePlayback?.openNativePlayer === 'function';
 
     const [menuOpen, openMenu, closeMenu, toggleMenu] = useBinaryState(false);
@@ -144,9 +145,12 @@ const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, 
                 return;
             }
 
-            const opened = typeof nativePlayback.openNativePlayerSession === 'function' ?
-                nativePlayback.openNativePlayerSession(streamLink, videoId || '', metaId || '', name || description || addonName || 'NUVYRO')
-                : nativePlayback.openNativePlayer(streamLink, videoId || '', name || description || addonName || 'NUVYRO');
+            const title = name || description || addonName || 'NUVYRO';
+            const opened = typeof nativePlayback.openNativePlayerSessionV2 === 'function' ?
+                nativePlayback.openNativePlayerSessionV2(streamLink, videoId || '', metaId || '', title, JSON.stringify(playbackSources || []))
+                : typeof nativePlayback.openNativePlayerSession === 'function' ?
+                    nativePlayback.openNativePlayerSession(streamLink, videoId || '', metaId || '', title)
+                    : nativePlayback.openNativePlayer(streamLink, videoId || '', title);
             if (opened) {
                 return;
             }
@@ -169,7 +173,7 @@ const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, 
             });
         }
 
-    }, [props.onClick, profile.settings, markVideoAsWatched, streamLink, videoId, metaId, name, description, addonName, nativePlayback, usesCinematicPlayer]);
+    }, [props.onClick, profile.settings, markVideoAsWatched, streamLink, videoId, metaId, name, description, addonName, playbackSources, nativePlayback, usesCinematicPlayer]);
 
     const copyMagnetLink = React.useCallback((event) => {
         event.preventDefault();
@@ -356,6 +360,10 @@ Stream.propTypes = {
     description: PropTypes.string,
     thumbnail: PropTypes.string,
     progress: PropTypes.number,
+    playbackSources: PropTypes.arrayOf(PropTypes.shape({
+        url: PropTypes.string,
+        label: PropTypes.string
+    })),
     deepLinks: PropTypes.shape({
         player: PropTypes.string,
         externalPlayer: PropTypes.shape({

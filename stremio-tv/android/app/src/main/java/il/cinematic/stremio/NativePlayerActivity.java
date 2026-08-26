@@ -54,8 +54,10 @@ public final class NativePlayerActivity extends Activity {
     static final String EXTRA_PLAYBACK_ENDED = "playback_ended";
     static final String EXTRA_PLAYBACK_POSITION = "playback_position";
     static final String EXTRA_PLAYBACK_DURATION = "playback_duration";
+    static final String EXTRA_SOURCE_URLS = "source_urls";
+    static final String EXTRA_SOURCE_LABELS = "source_labels";
 
-    private static final long SLOW_SOURCE_NOTICE_MS = 15_000L;
+    private static final long SLOW_SOURCE_NOTICE_MS = 25_000L;
     private static final long SAVE_INTERVAL_MS = 10_000L;
     private static final long CONTROLS_TIMEOUT_MS = 6_000L;
     private static final long SEEK_STEP_MS = 10_000L;
@@ -95,6 +97,9 @@ public final class NativePlayerActivity extends Activity {
     private String videoId;
     private String metaId;
     private String title;
+    private ArrayList<String> sourceUrls;
+    private ArrayList<String> sourceLabels;
+    private int sourceIndex;
     private long pendingResumeMs;
     private boolean firstFrameRendered;
     private boolean usingVlc;
@@ -109,13 +114,20 @@ public final class NativePlayerActivity extends Activity {
     private PlayerState playerState = PlayerState.IDLE;
 
     private final Runnable slowSourceNoticeRunnable = () -> {
-        if (!firstFrameRendered && !usingVlc && !isFinishing()) {
+        if (!firstFrameRendered && !isFinishing()) {
             playerState = PlayerState.BUFFERING;
-            showRecoveryStatus(
-                text("המקור הזה לוקח יותר זמן מהרגיל", "This source is taking longer than expected"),
-                text("להמשיך לחכות", "Still waiting"),
-                () -> showStatus(text("ממשיך לחכות למקור…", "Still waiting for the source…"))
-            );
+            if (hasNextSource()) {
+                switchToSource(sourceIndex + 1, text("המקור איטי. מנסים את הבא…", "Source is slow. Trying the next one…"));
+            } else {
+                showRecoveryStatus(
+                    text("המקור הזה לוקח יותר זמן מהרגיל", "This source is taking longer than expected"),
+                    text("להמשיך לחכות", "Still waiting"),
+                    () -> {
+                        showStatus(sourceStatus(text("ממשיך לחכות למקור…", "Still waiting for the source…")));
+                        scheduleSlowSourceNotice();
+                    }
+                );
+            }
         }
     };
 
@@ -127,6 +139,11 @@ public final class NativePlayerActivity extends Activity {
             if (now - lastSavedAt >= SAVE_INTERVAL_MS) {
                 saveProgress();
                 lastSavedAt = now;
+            }
+            if (!playbackEndReported && isPlaying() &&
+                PlaybackCompletionPolicy.isCompleted(getPosition(), getDuration())) {
+                reportPlaybackEnded();
+                return;
             }
             handler.postDelayed(this, 500L);
         }
@@ -144,6 +161,13 @@ public final class NativePlayerActivity extends Activity {
         videoId = getIntent().getStringExtra(EXTRA_VIDEO_ID);
         metaId = getIntent().getStringExtra(EXTRA_META_ID);
         title = getIntent().getStringExtra(EXTRA_TITLE);
+        sourceUrls = getIntent().getStringArrayListExtra(EXTRA_SOURCE_URLS);
+        sourceLabels = getIntent().getStringArrayListExtra(EXTRA_SOURCE_LABELS);
+        if (sourceUrls == null) sourceUrls = new ArrayList<>();
+        if (!sourceUrls.contains(streamUrl)) sourceUrls.add(0, streamUrl);
+        if (sourceLabels == null) sourceLabels = new ArrayList<>();
+        while (sourceLabels.size() < sourceUrls.size()) sourceLabels.add("Source " + (sourceLabels.size() + 1));
+        sourceIndex = Math.max(0, sourceUrls.indexOf(streamUrl));
         if (!isSupportedUrl(streamUrl)) {
             finish();
             return;
@@ -322,7 +346,7 @@ public final class NativePlayerActivity extends Activity {
         actions.addView(lockButton);
         tracksButton = button("שמע וכתוביות", view -> showTracksMenu());
         actions.addView(tracksButton);
-        sourceButton = button("מקור אחר", view -> finishPlayer());
+        sourceButton = button("מקור אחר", view -> showSourceMenu());
         actions.addView(sourceButton);
         actionScroller.addView(actions, matchWidthWrapHeight());
         bottomPanel.addView(actionScroller, matchWidthWrapHeight());
@@ -368,11 +392,7 @@ public final class NativePlayerActivity extends Activity {
 
     private void startSelectedEngine() {
         playerState = PlayerState.RESOLVING_SOURCE;
-        if (isLocalStreamServerUrl(streamUrl)) {
-            startVlcFallback("פותח במצב תאימות לטלוויזיה…");
-        } else {
-            startMedia3();
-        }
+        startMedia3();
     }
 
     private void startMedia3() {
@@ -382,7 +402,7 @@ public final class NativePlayerActivity extends Activity {
         firstFrameRendered = false;
         playerView.setVisibility(View.VISIBLE);
         vlcView.setVisibility(View.GONE);
-        showStatus("מתחבר למקור…");
+        showStatus(sourceStatus(text("מתחבר למקור…", "Connecting to source…")));
         final DefaultRenderersFactory renderers = new DefaultRenderersFactory(this)
             .setEnableDecoderFallback(true);
         exoPlayer = new ExoPlayer.Builder(this, renderers)
@@ -403,12 +423,7 @@ public final class NativePlayerActivity extends Activity {
                     playerState = PlayerState.SWITCHING_ENGINE;
                     startVlcFallback(text("הפורמט דורש מצב תאימות…", "This format needs compatibility mode…"));
                 } else {
-                    playerState = PlayerState.ERROR;
-                    showRecoveryStatus(
-                        text("לא הצלחנו להתחבר למקור הזה", "We could not connect to this source"),
-                        text("נסה שוב", "Try again"),
-                        NativePlayerActivity.this::retryCurrentEngine
-                    );
+                    tryNextSourceOrRecover();
                 }
             }
             @Override public void onRenderedFirstFrame() {
@@ -422,7 +437,7 @@ public final class NativePlayerActivity extends Activity {
             @Override public void onPlaybackStateChanged(int state) {
                 if (state == Player.STATE_BUFFERING) {
                     playerState = PlayerState.BUFFERING;
-                    showStatus(text("טוען וידאו…", "Buffering video…"));
+                    showStatus(sourceStatus(text("טוען וידאו…", "Buffering video…")));
                 }
                 if (state == Player.STATE_READY) {
                     playerState = exoPlayer != null && exoPlayer.isPlaying() ? PlayerState.PLAYING : PlayerState.PAUSED;
@@ -469,6 +484,8 @@ public final class NativePlayerActivity extends Activity {
         vlcPlayer.setEventListener(event -> {
             if (event.type == MediaPlayer.Event.Playing || event.type == MediaPlayer.Event.Vout) {
                 vlcStarted = true;
+                firstFrameRendered = true;
+                handler.removeCallbacks(slowSourceNoticeRunnable);
                 playerState = PlayerState.PLAYING;
                 hideStatus();
                 applyPendingResume();
@@ -479,14 +496,9 @@ public final class NativePlayerActivity extends Activity {
                 scheduleControlsHide();
             } else if (event.type == MediaPlayer.Event.Buffering && !vlcStarted) {
                 playerState = PlayerState.BUFFERING;
-                showStatus("טוען במצב תאימות…");
+                showStatus(sourceStatus(text("טוען במצב תאימות…", "Buffering in compatibility mode…")));
             } else if (event.type == MediaPlayer.Event.EncounteredError) {
-                playerState = PlayerState.ERROR;
-                showRecoveryStatus(
-                    text("המקור הזה לא מגיב", "This source is not responding"),
-                    text("נסה שוב", "Try again"),
-                    this::retryCurrentEngine
-                );
+                runOnUiThread(this::tryNextSourceOrRecover);
             } else if (event.type == MediaPlayer.Event.EndReached) {
                 runOnUiThread(this::reportPlaybackEnded);
             }
@@ -496,6 +508,64 @@ public final class NativePlayerActivity extends Activity {
         vlcPlayer.setMedia(media);
         media.release();
         vlcPlayer.play();
+        handler.removeCallbacks(slowSourceNoticeRunnable);
+        handler.postDelayed(slowSourceNoticeRunnable, SLOW_SOURCE_NOTICE_MS);
+    }
+
+    private boolean hasNextSource() {
+        return sourceUrls != null && sourceIndex + 1 < sourceUrls.size();
+    }
+
+    private void scheduleSlowSourceNotice() {
+        handler.removeCallbacks(slowSourceNoticeRunnable);
+        handler.postDelayed(slowSourceNoticeRunnable, SLOW_SOURCE_NOTICE_MS);
+    }
+
+    private String sourceStatus(String message) {
+        if (sourceUrls == null || sourceUrls.size() <= 1) return message;
+        return message + "\n" + text("מקור ", "Source ") + (sourceIndex + 1) + "/" + sourceUrls.size();
+    }
+
+    private void tryNextSourceOrRecover() {
+        if (hasNextSource()) {
+            switchToSource(sourceIndex + 1, text("המקור לא עבד. מנסים את הבא…", "Source failed. Trying the next one…"));
+            return;
+        }
+        playerState = PlayerState.ERROR;
+        showRecoveryStatus(
+            text("לא הצלחנו לנגן את המקורות הזמינים", "We could not play the available sources"),
+            text("נסה שוב", "Try again"),
+            this::retryCurrentEngine
+        );
+    }
+
+    private void switchToSource(int index, String message) {
+        if (sourceUrls == null || index < 0 || index >= sourceUrls.size()) return;
+        final long resumePosition = getPosition();
+        handler.removeCallbacks(slowSourceNoticeRunnable);
+        releasePlayers();
+        usingVlc = false;
+        firstFrameRendered = false;
+        sourceIndex = index;
+        streamUrl = sourceUrls.get(index);
+        if (resumePosition > 5_000L) pendingResumeMs = resumePosition;
+        showStatus(sourceStatus(message));
+        handler.postDelayed(this::startMedia3, 250L);
+    }
+
+    private void showSourceMenu() {
+        if (sourceUrls == null || sourceUrls.size() <= 1) {
+            showStatusTemporarily(text("אין מקורות נוספים לפרק הזה", "No alternative sources are available"));
+            return;
+        }
+        final String[] labels = sourceLabels.toArray(new String[0]);
+        new AlertDialog.Builder(this)
+            .setTitle(text("בחירת מקור", "Choose source"))
+            .setSingleChoiceItems(labels, sourceIndex, (dialog, which) -> {
+                dialog.dismiss();
+                if (which != sourceIndex) switchToSource(which, text("מחליפים מקור…", "Switching source…"));
+            })
+            .show();
     }
 
     private void applyPendingResume() {
@@ -768,7 +838,7 @@ public final class NativePlayerActivity extends Activity {
 
     private void finishPlayer() {
         saveProgress();
-        setPlaybackResult(false);
+        setPlaybackResult(PlaybackCompletionPolicy.isCompleted(getPosition(), getDuration()));
         finish();
     }
 

@@ -14,6 +14,9 @@ import android.webkit.JavascriptInterface;
 import android.util.Log;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
+
+import java.util.ArrayList;
 
 import androidx.activity.OnBackPressedCallback;
 
@@ -209,10 +212,35 @@ public class MainActivity extends BridgeActivity {
 
         @JavascriptInterface
         public boolean openNativePlayerSession(String streamUrl, String videoId, String metaId, String title) {
+            return openNativePlayerSessionV2(streamUrl, videoId, metaId, title, "[]");
+        }
+
+        @JavascriptInterface
+        public boolean openNativePlayerSessionV2(String streamUrl, String videoId, String metaId, String title, String sourcesJson) {
             if (streamUrl == null || streamUrl.isEmpty()) return false;
             final Uri uri = Uri.parse(streamUrl);
             if (!"http".equalsIgnoreCase(uri.getScheme()) && !"https".equalsIgnoreCase(uri.getScheme())) {
                 return false;
+            }
+            final ArrayList<String> sourceUrls = new ArrayList<>();
+            final ArrayList<String> sourceLabels = new ArrayList<>();
+            sourceUrls.add(streamUrl);
+            sourceLabels.add(title == null || title.isEmpty() ? "Best match" : title);
+            try {
+                final JSONArray sources = new JSONArray(sourcesJson == null ? "[]" : sourcesJson);
+                for (int index = 0; index < sources.length() && sourceUrls.size() < 12; index++) {
+                    final JSONObject source = sources.optJSONObject(index);
+                    if (source == null) continue;
+                    final String candidate = source.optString("url", "");
+                    final Uri candidateUri = Uri.parse(candidate);
+                    final String scheme = candidateUri.getScheme();
+                    if (candidate.isEmpty() || sourceUrls.contains(candidate) ||
+                        (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme))) continue;
+                    sourceUrls.add(candidate);
+                    sourceLabels.add(source.optString("label", "Source " + (sourceUrls.size())));
+                }
+            } catch (Exception error) {
+                Log.w("CinematicPlayer", "Ignoring invalid source queue", error);
             }
             final PlaybackSession session = PlaybackSession.fromLegacy(streamUrl, videoId, title);
             runOnUiThread(() -> {
@@ -221,6 +249,8 @@ public class MainActivity extends BridgeActivity {
                 intent.putExtra(NativePlayerActivity.EXTRA_VIDEO_ID, session.getVideoId());
                 intent.putExtra(NativePlayerActivity.EXTRA_META_ID, metaId == null ? "" : metaId);
                 intent.putExtra(NativePlayerActivity.EXTRA_TITLE, session.getTitle());
+                intent.putStringArrayListExtra(NativePlayerActivity.EXTRA_SOURCE_URLS, sourceUrls);
+                intent.putStringArrayListExtra(NativePlayerActivity.EXTRA_SOURCE_LABELS, sourceLabels);
                 startActivityForResult(intent, PLAYER_REQUEST_CODE);
             });
             return true;

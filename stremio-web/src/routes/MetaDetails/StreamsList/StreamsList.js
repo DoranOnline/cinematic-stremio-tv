@@ -116,6 +116,13 @@ const StreamsList = ({ className, video, metaId, type, onEpisodeSearch, ...props
                 [];
         return rankSources(candidates, preferredAddons);
     }, [streamsByAddon, selectedAddon, orderedAddonKeys, preferredAddons]);
+    const nativePlaybackSources = React.useMemo(() => filteredStreams
+        .map((stream) => ({
+            url: stream.deepLinks?.externalPlayer?.streaming,
+            label: [stream.addonName, ...(stream.intelligence?.badges || []).slice(0, 3)].filter(Boolean).join(' • ')
+        }))
+        .filter((source) => typeof source.url === 'string' && /^https?:\/\//i.test(source.url))
+        .slice(0, 12), [filteredStreams]);
 
     React.useEffect(() => {
         if (!video) return;
@@ -308,6 +315,7 @@ const StreamsList = ({ className, video, metaId, type, onEpisodeSearch, ...props
                                             thumbnail={stream.thumbnail}
                                             progress={stream.progress}
                                             deepLinks={stream.deepLinks}
+                                            playbackSources={nativePlaybackSources}
                                             onClick={stream.onClick}
                                         />
                                     ))}
