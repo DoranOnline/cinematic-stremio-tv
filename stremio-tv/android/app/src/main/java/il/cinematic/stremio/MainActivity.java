@@ -45,7 +45,7 @@ public class MainActivity extends BridgeActivity {
         webView.setBackgroundColor(Color.rgb(7, 8, 10));
         webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
         webView.getSettings().setUserAgentString(
-            webView.getSettings().getUserAgentString() + " NuvyroTV/2.4.0"
+            webView.getSettings().getUserAgentString() + " NuvyroTV/2.5.0"
         );
         webView.addJavascriptInterface(
             new NativeStatusBridge(), WebNativeBridgeContract.LEGACY_OBJECT_NAME);

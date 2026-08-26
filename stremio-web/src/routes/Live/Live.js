@@ -37,6 +37,7 @@ const Live = () => {
     const [selectedId, setSelectedId] = React.useState(null);
     const [favorites, setFavorites] = React.useState(() => readIds(FAVORITES_KEY));
     const [recent, setRecent] = React.useState(() => readIds(RECENT_KEY));
+    const liveContentRef = React.useRef(null);
     const copy = React.useMemo(() => (i18n.resolvedLanguage || i18n.language || 'en').startsWith('he') ? ({
         title: 'שידורים חיים',
         subtitle: 'כל הערוצים שלך במקום אחד',
@@ -127,10 +128,38 @@ const Live = () => {
             return next;
         });
     }, []);
+    const renderArtworkFallback = React.useCallback(() => (
+        <div className={styles['art-fallback']} aria-hidden={'true'}><span>{['NUV', 'YRO'].join('')}</span></div>
+    ), []);
+
+    React.useEffect(() => {
+        const handleDirectionalFocus = (event) => {
+            if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+            const activeElement = document.activeElement;
+            const activeHref = activeElement?.getAttribute?.('href') || '';
+            const activeFilter = activeElement?.closest?.('[data-nuvyro-live-filter="true"]');
+            const activeChannel = activeElement?.closest?.('[data-nuvyro-live-channel="true"]');
+            if (event.key === 'ArrowDown' && (activeHref === '#/live' || activeFilter)) {
+                const selected = liveContentRef.current?.querySelector('[data-nuvyro-live-channel="true"]');
+                if (selected instanceof HTMLElement) {
+                    event.preventDefault();
+                    selected.focus({ preventScroll: false });
+                }
+            } else if (event.key === 'ArrowUp' && activeChannel === liveContentRef.current?.querySelector('[data-nuvyro-live-channel="true"]')) {
+                const selectedFilter = liveContentRef.current?.querySelector('[data-nuvyro-live-filter="true"].' + styles['selected']);
+                if (selectedFilter instanceof HTMLElement) {
+                    event.preventDefault();
+                    selectedFilter.focus({ preventScroll: false });
+                }
+            }
+        };
+        window.addEventListener('keydown', handleDirectionalFocus, true);
+        return () => window.removeEventListener('keydown', handleDirectionalFocus, true);
+    }, []);
 
     return (
         <MainNavBars className={styles['live-container']} route={'live'}>
-            <div className={styles['live-content']}>
+            <div ref={liveContentRef} className={styles['live-content']}>
                 <header className={styles['hero']}>
                     <div><div className={styles['eyebrow']}><span />{copy.live}</div><h1>{copy.title}</h1><p>{copy.subtitle}</p></div>
                     <nav className={styles['filters']}>
@@ -139,7 +168,7 @@ const Live = () => {
                             ['favorites', copy.favorites],
                             ['recent', copy.recent]
                         ].map(([value, label]) => (
-                            <Button key={value} className={classnames(styles['filter'], { [styles['selected']]: filter === value })} onClick={() => setFilter(value)}>
+                            <Button key={value} data-nuvyro-live-filter={'true'} className={classnames(styles['filter'], { [styles['selected']]: filter === value })} onClick={() => setFilter(value)}>
                                 {label}
                             </Button>
                         ))}
@@ -162,7 +191,7 @@ const Live = () => {
                                 :
                                 <section className={styles['live-workspace']}>
                                     <div className={styles['preview']}>
-                                        <Image className={styles['preview-art']} src={selectedChannel.background || selectedChannel.poster} alt={' '} />
+                                        <Image className={styles['preview-art']} src={selectedChannel.background || selectedChannel.poster} renderFallback={renderArtworkFallback} alt={' '} />
                                         <div className={styles['preview-shade']} />
                                         <div className={styles['preview-copy']}>
                                             <span className={styles['live-badge']}>{copy.live}</span>
@@ -179,11 +208,12 @@ const Live = () => {
                                             <article key={channel.id} className={classnames(styles['channel-card'], { [styles['selected-channel']]: selectedChannel.id === channel.id })}>
                                                 <Button
                                                     className={styles['channel-action']}
+                                                    data-nuvyro-live-channel={'true'}
                                                     href={getMetaDetailsHref(channel.deepLinks)}
                                                     onClick={() => rememberRecent(channel.id)}
                                                     onFocus={() => setSelectedId(channel.id)}
                                                 >
-                                                    <Image className={styles['art']} src={channel.background || channel.poster} alt={' '} />
+                                                    <Image className={styles['art']} src={channel.background || channel.poster} renderFallback={renderArtworkFallback} alt={' '} />
                                                     <div className={styles['shade']} />
                                                     <div className={styles['channel-copy']}>
                                                         <span className={styles['live-badge']}>{copy.live}</span>

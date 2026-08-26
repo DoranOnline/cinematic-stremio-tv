@@ -13,6 +13,7 @@ const StreamsList = require('./StreamsList');
 const VideosList = require('./VideosList');
 const useMetaDetails = require('./useMetaDetails');
 const useSeason = require('./useSeason');
+const { getNextPlayableEpisode } = require('./nextEpisode');
 const styles = require('./styles');
 
 const GAMEPAD_HANDLER_ID = 'metadetails';
@@ -104,8 +105,8 @@ const MetaDetails = () => {
     const seasonOnSelect = React.useCallback((event) => {
         setSeason(event.value);
     }, [setSeason]);
-    const handleEpisodeSearch = React.useCallback((season, episode) => {
-        const searchVideoHash = encodeURIComponent(`${urlParams.id}:${season}:${episode}`);
+    const handleEpisodeSearch = React.useCallback((season, episode, exactVideoId) => {
+        const searchVideoHash = encodeURIComponent(exactVideoId || `${urlParams.id}:${season}:${episode}`);
         const url = location.pathname;
         const searchVideoPath = (urlParams.videoId === undefined || urlParams.videoId === null || urlParams.videoId === '') ?
             url + (!url.endsWith('/') ? '/' : '') + searchVideoHash
@@ -128,18 +129,14 @@ const MetaDetails = () => {
                     args: [{ id: video.id, released: video.released }, true]
                 }
             });
-            const orderedEpisodes = videos
-                .filter((candidate) => typeof candidate.season === 'number' && typeof candidate.episode === 'number' && !candidate.upcoming)
-                .sort((left, right) => left.season - right.season || left.episode - right.episode);
-            const currentIndex = orderedEpisodes.findIndex((candidate) => candidate.id === video.id);
-            const nextEpisode = currentIndex >= 0 ? orderedEpisodes[currentIndex + 1] : null;
+            const nextEpisode = getNextPlayableEpisode(videos, video.id);
             if (!nextEpisode || typeof nextEpisode.season !== 'number' || typeof nextEpisode.episode !== 'number') return;
             try {
                 sessionStorage.setItem('nuvyro.autoplayVideoId', nextEpisode.id || 'next');
             } catch (_) {
                 // Autoplay remains best-effort if storage is unavailable.
             }
-            handleEpisodeSearch(nextEpisode.season, nextEpisode.episode);
+            handleEpisodeSearch(nextEpisode.season, nextEpisode.episode, nextEpisode.id);
         };
         window.addEventListener('nuvyro-playback-ended', handleNativePlaybackEnded);
         return () => window.removeEventListener('nuvyro-playback-ended', handleNativePlaybackEnded);
