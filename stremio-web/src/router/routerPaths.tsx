@@ -15,6 +15,11 @@ export default [
         element: <routes.Discover />,
     },
     {
+        path: '/live',
+        view: 1,
+        element: <routes.Live />,
+    },
+    {
         path: '/library/:type?',
         view: 1,
         element: <routes.Library />,

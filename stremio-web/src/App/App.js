@@ -17,7 +17,7 @@ const { default: GamepadModal } = require('./GamepadModal');
 const styles = require('./styles');
 
 const ProtectedRoutes = withCoreSuspender(Routes);
-const NAVIGATE_TABS_ROUTES = ['/', '/discover', '/library', '/calendar', '/addons', '/settings'];
+const NAVIGATE_TABS_ROUTES = ['/', '/discover', '/live', '/library', '/calendar', '/addons', '/settings'];
 const LOCAL_PROGRESS_KEY = 'nuvyro.playbackProgress';
 
 const App = () => {

@@ -9,6 +9,7 @@ import styles from './MainNavBars.less';
 const TABS = [
     { id: 'board', label: 'Board', icon: 'home', href: '/' },
     { id: 'discover', label: 'Discover', icon: 'discover', href: '/discover' },
+    { id: 'live', label: 'Live TV', icon: 'tv', href: '/live' },
     { id: 'library', label: 'Library', icon: 'library', href: '/library' },
     { id: 'calendar', label: 'Calendar', icon: 'calendar', href: '/calendar' },
     { id: 'addons', label: 'ADDONS', icon: 'addons', href: '/addons' },
