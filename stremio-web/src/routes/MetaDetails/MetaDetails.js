@@ -120,8 +120,18 @@ const MetaDetails = () => {
                 :
                 null;
             if (!video || !Array.isArray(videos)) return;
-            const currentIndex = videos.findIndex((candidate) => candidate.id === video.id);
-            const nextEpisode = currentIndex >= 0 ? videos[currentIndex + 1] : null;
+            core.transport.dispatch({
+                action: 'MetaDetails',
+                args: {
+                    action: 'MarkVideoAsWatched',
+                    args: [{ id: video.id, released: video.released }, true]
+                }
+            });
+            const orderedEpisodes = videos
+                .filter((candidate) => typeof candidate.season === 'number' && typeof candidate.episode === 'number' && !candidate.upcoming)
+                .sort((left, right) => left.season - right.season || left.episode - right.episode);
+            const currentIndex = orderedEpisodes.findIndex((candidate) => candidate.id === video.id);
+            const nextEpisode = currentIndex >= 0 ? orderedEpisodes[currentIndex + 1] : null;
             if (!nextEpisode || typeof nextEpisode.season !== 'number' || typeof nextEpisode.episode !== 'number') return;
             try {
                 sessionStorage.setItem('nuvyro.autoplayVideoId', nextEpisode.id || 'next');
@@ -240,6 +250,7 @@ const MetaDetails = () => {
                             className={styles['streams-list']}
                             streams={metaDetails.streams}
                             video={video}
+                            metaId={metaDetails.metaItem?.content?.content?.id || id}
                             type={streamPath.type}
                             onEpisodeSearch={handleEpisodeSearch}
                         />

@@ -50,7 +50,10 @@ public final class NativePlayerActivity extends Activity {
     static final String EXTRA_STREAM_URL = "stream_url";
     static final String EXTRA_VIDEO_ID = "video_id";
     static final String EXTRA_TITLE = "title";
+    static final String EXTRA_META_ID = "meta_id";
     static final String EXTRA_PLAYBACK_ENDED = "playback_ended";
+    static final String EXTRA_PLAYBACK_POSITION = "playback_position";
+    static final String EXTRA_PLAYBACK_DURATION = "playback_duration";
 
     private static final long SLOW_SOURCE_NOTICE_MS = 15_000L;
     private static final long SAVE_INTERVAL_MS = 10_000L;
@@ -90,6 +93,7 @@ public final class NativePlayerActivity extends Activity {
     private View lastFocusedControl;
     private String streamUrl;
     private String videoId;
+    private String metaId;
     private String title;
     private long pendingResumeMs;
     private boolean firstFrameRendered;
@@ -138,6 +142,7 @@ public final class NativePlayerActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         streamUrl = getIntent().getStringExtra(EXTRA_STREAM_URL);
         videoId = getIntent().getStringExtra(EXTRA_VIDEO_ID);
+        metaId = getIntent().getStringExtra(EXTRA_META_ID);
         title = getIntent().getStringExtra(EXTRA_TITLE);
         if (!isSupportedUrl(streamUrl)) {
             finish();
@@ -317,7 +322,7 @@ public final class NativePlayerActivity extends Activity {
         actions.addView(lockButton);
         tracksButton = button("שמע וכתוביות", view -> showTracksMenu());
         actions.addView(tracksButton);
-        sourceButton = button("מקור אחר", view -> finish());
+        sourceButton = button("מקור אחר", view -> finishPlayer());
         actions.addView(sourceButton);
         actionScroller.addView(actions, matchWidthWrapHeight());
         bottomPanel.addView(actionScroller, matchWidthWrapHeight());
@@ -504,9 +509,7 @@ public final class NativePlayerActivity extends Activity {
         if (playbackEndReported || isFinishing()) return;
         playbackEndReported = true;
         clearProgress();
-        final Intent result = new Intent();
-        result.putExtra(EXTRA_PLAYBACK_ENDED, true);
-        setResult(RESULT_OK, result);
+        setPlaybackResult(true);
         showStatus(text("עובר לפרק הבא…", "Starting the next episode…"));
         handler.postDelayed(this::finish, 650L);
     }
@@ -765,7 +768,18 @@ public final class NativePlayerActivity extends Activity {
 
     private void finishPlayer() {
         saveProgress();
+        setPlaybackResult(false);
         finish();
+    }
+
+    private void setPlaybackResult(boolean ended) {
+        final Intent result = new Intent();
+        result.putExtra(EXTRA_PLAYBACK_ENDED, ended);
+        result.putExtra(EXTRA_VIDEO_ID, videoId);
+        result.putExtra(EXTRA_META_ID, metaId);
+        result.putExtra(EXTRA_PLAYBACK_POSITION, ended ? getDuration() : getPosition());
+        result.putExtra(EXTRA_PLAYBACK_DURATION, getDuration());
+        setResult(RESULT_OK, result);
     }
 
     private void showStatus(String text) {
@@ -865,8 +879,7 @@ public final class NativePlayerActivity extends Activity {
         if (controlsPanel.getVisibility() == View.VISIBLE) {
             controlsPanel.setVisibility(View.GONE);
         } else {
-            saveProgress();
-            super.onBackPressed();
+            finishPlayer();
         }
     }
 

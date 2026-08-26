@@ -17,6 +17,7 @@ const { rankSources } = require('./sourceIntelligence');
 
 const ALL_ADDONS_KEY = 'ALL';
 const PREFERRED_ADDONS_KEY = 'cinematic.preferredAddons';
+const SMART_PLAY_BRAND = ['NUVYRO', 'SMART', 'PLAY'].join(' ');
 
 const loadPreferredAddons = () => {
     try {
@@ -27,7 +28,7 @@ const loadPreferredAddons = () => {
     }
 };
 
-const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
+const StreamsList = ({ className, video, metaId, type, onEpisodeSearch, ...props }) => {
     const { t, i18n } = useTranslation();
     const core = useCore();
     const platform = usePlatform();
@@ -36,6 +37,7 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
     const streamsContainerRef = React.useRef(null);
     const [selectedAddon, setSelectedAddon] = React.useState(ALL_ADDONS_KEY);
     const [preferredAddons, setPreferredAddons] = React.useState(loadPreferredAddons);
+    const [smartPlayActive, setSmartPlayActive] = React.useState(false);
     const rememberAddon = React.useCallback((addonName) => {
         setPreferredAddons((current) => {
             const next = [addonName, ...current.filter((name) => name !== addonName)].slice(0, 8);
@@ -116,7 +118,7 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
     }, [streamsByAddon, selectedAddon, orderedAddonKeys, preferredAddons]);
 
     React.useEffect(() => {
-        if (!video || filteredStreams.length === 0) return;
+        if (!video) return;
         let pendingVideoId = null;
         try {
             pendingVideoId = sessionStorage.getItem('nuvyro.autoplayVideoId');
@@ -124,6 +126,10 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
             return;
         }
         if (!pendingVideoId || (pendingVideoId !== 'next' && pendingVideoId !== video.id)) return;
+        setSmartPlayActive(true);
+    }, [video]);
+    React.useEffect(() => {
+        if (!smartPlayActive || filteredStreams.length === 0) return;
         sessionStorage.removeItem('nuvyro.autoplayVideoId');
         const timer = window.setTimeout(() => {
             const firstSource = streamsContainerRef.current?.querySelector('[data-nuvyro-stream="true"]');
@@ -133,7 +139,24 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
             }
         }, 350);
         return () => window.clearTimeout(timer);
-    }, [video, filteredStreams]);
+    }, [smartPlayActive, filteredStreams]);
+    React.useEffect(() => {
+        const handleSmartPlayFailure = () => setSmartPlayActive(false);
+        window.addEventListener('nuvyro-smart-play-failed', handleSmartPlayFailure);
+        return () => window.removeEventListener('nuvyro-smart-play-failed', handleSmartPlayFailure);
+    }, []);
+    const showAllSources = React.useCallback(() => {
+        try {
+            sessionStorage.removeItem('nuvyro.autoplayVideoId');
+        } catch (_) {
+            // The source list remains usable even when storage is unavailable.
+        }
+        setSmartPlayActive(false);
+        window.setTimeout(() => {
+            const firstSource = streamsContainerRef.current?.querySelector('[data-nuvyro-stream="true"]');
+            if (firstSource instanceof HTMLElement) firstSource.focus({ preventScroll: false });
+        }, 50);
+    }, []);
     const selectableOptions = React.useMemo(() => {
         return {
             options: [
@@ -171,6 +194,23 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
 
     return (
         <div className={classnames(className, styles['streams-list-container'])}>
+            {
+                smartPlayActive ?
+                    <div className={styles['smart-play-panel']} role={'status'}>
+                        <div className={styles['smart-play-orbit']} aria-hidden={'true'} />
+                        <div className={styles['smart-play-kicker']}>{SMART_PLAY_BRAND}</div>
+                        <div className={styles['smart-play-title']}>
+                            {i18n.resolvedLanguage?.startsWith('he') ? 'מכינים את הפרק…' : 'Preparing your episode…'}
+                        </div>
+                        <div className={styles['smart-play-copy']}>
+                            {i18n.resolvedLanguage?.startsWith('he') ? 'בוחרים אוטומטית את המקור המהיר והאמין ביותר' : 'Automatically choosing the fastest reliable source'}
+                        </div>
+                        <Button className={styles['smart-play-more']} onClick={showAllSources}>
+                            {i18n.resolvedLanguage?.startsWith('he') ? 'מקורות נוספים' : 'More sources'}
+                        </Button>
+                    </div>
+                    : null
+            }
             <div className={styles['select-choices-wrapper']}>
                 {
                     video ?
@@ -253,11 +293,12 @@ const StreamsList = ({ className, video, type, onEpisodeSearch, ...props }) => {
                             </div>
                             :
                             <React.Fragment>
-                                <div className={styles['streams-container']} ref={streamsContainerRef}>
+                                <div className={classnames(styles['streams-container'], { [styles['smart-play-hidden']]: smartPlayActive })} ref={streamsContainerRef}>
                                     {filteredStreams.map((stream, index) => (
                                         <Stream
                                             key={index}
                                             videoId={video?.id}
+                                            metaId={metaId}
                                             videoReleased={video?.released}
                                             addonName={stream.addonName}
                                             badges={stream.intelligence.badges}
@@ -290,6 +331,7 @@ StreamsList.propTypes = {
     className: PropTypes.string,
     streams: PropTypes.arrayOf(PropTypes.object).isRequired,
     video: PropTypes.object,
+    metaId: PropTypes.string,
     type: PropTypes.string,
     onEpisodeSearch: PropTypes.func
 };

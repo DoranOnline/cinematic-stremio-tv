@@ -18,6 +18,7 @@ const styles = require('./styles');
 
 const ProtectedRoutes = withCoreSuspender(Routes);
 const NAVIGATE_TABS_ROUTES = ['/', '/discover', '/library', '/calendar', '/addons', '/settings'];
+const LOCAL_PROGRESS_KEY = 'nuvyro.playbackProgress';
 
 const App = () => {
     const core = useCore();
@@ -98,6 +99,31 @@ const App = () => {
         window.addEventListener('nuvyro-native-back-request', onNativeBackRequest);
         return () => window.removeEventListener('nuvyro-native-back-request', onNativeBackRequest);
     }, [navigate]);
+
+    React.useEffect(() => {
+        const onNativePlaybackProgress = (event) => {
+            const detail = event.detail || {};
+            if (typeof detail.videoId !== 'string' || detail.videoId.length === 0) return;
+            const duration = Number(detail.duration) || 0;
+            const position = Number(detail.position) || 0;
+            const progress = duration > 0 ? Math.max(0, Math.min(100, position / duration * 100)) : 0;
+            try {
+                const current = JSON.parse(localStorage.getItem(LOCAL_PROGRESS_KEY) || '{}');
+                const next = {
+                    ...current,
+                    [detail.videoId]: { position, duration, progress, ended: Boolean(detail.ended), updatedAt: Date.now() }
+                };
+                if (typeof detail.metaId === 'string' && detail.metaId.length > 0) {
+                    next[`meta:${detail.metaId}`] = { videoId: detail.videoId, position, duration, progress, ended: Boolean(detail.ended), updatedAt: Date.now() };
+                }
+                localStorage.setItem(LOCAL_PROGRESS_KEY, JSON.stringify(next));
+            } catch (_) {
+                // Native progress sync is an enhancement; playback must never depend on storage.
+            }
+        };
+        window.addEventListener('nuvyro-playback-progress', onNativePlaybackProgress);
+        return () => window.removeEventListener('nuvyro-playback-progress', onNativePlaybackProgress);
+    }, []);
 
     React.useEffect(() => {
         const onChromecastStateChange = () => {

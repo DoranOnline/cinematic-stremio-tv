@@ -7,6 +7,23 @@ const LibItem = require('stremio/components/LibItem');
 
 const ContinueWatchingItem = ({ _id, notifications, ...props }) => {
     const core = useCore();
+    const [nativeProgress, setNativeProgress] = React.useState(null);
+
+    const refreshNativeProgress = React.useCallback(() => {
+        if (typeof _id !== 'string') return;
+        try {
+            const progress = JSON.parse(localStorage.getItem('nuvyro.playbackProgress') || '{}')[`meta:${_id}`];
+            setNativeProgress(progress && !progress.ended ? progress.progress : null);
+        } catch (_) {
+            setNativeProgress(null);
+        }
+    }, [_id]);
+
+    React.useEffect(() => {
+        refreshNativeProgress();
+        window.addEventListener('nuvyro-playback-progress', refreshNativeProgress);
+        return () => window.removeEventListener('nuvyro-playback-progress', refreshNativeProgress);
+    }, [refreshNativeProgress]);
 
     const onDismissClick = React.useCallback((event) => {
         event.preventDefault();
@@ -31,6 +48,7 @@ const ContinueWatchingItem = ({ _id, notifications, ...props }) => {
     return (
         <LibItem
             {...props}
+            progress={nativeProgress === null ? props.progress : nativeProgress}
             _id={_id}
             posterChangeCursor={true}
             notifications={notifications}
@@ -42,6 +60,7 @@ const ContinueWatchingItem = ({ _id, notifications, ...props }) => {
 ContinueWatchingItem.propTypes = {
     _id: PropTypes.string,
     notifications: PropTypes.object,
+    progress: PropTypes.number,
     deepLinks: PropTypes.shape({
         metaDetailsVideos: PropTypes.string,
         metaDetailsStreams: PropTypes.string,

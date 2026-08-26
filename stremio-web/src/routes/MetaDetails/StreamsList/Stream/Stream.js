@@ -12,14 +12,15 @@ const { default: useRouteFocused } = require('stremio/common/useRouteFocused');
 const StreamPlaceholder = require('./StreamPlaceholder');
 const styles = require('./styles');
 
-const Stream = ({ className, videoId, videoReleased, addonName, badges, bestMatch, name, description, thumbnail, progress, deepLinks, ...props }) => {
+const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, bestMatch, name, description, thumbnail, progress, deepLinks, ...props }) => {
     const profile = useProfile();
     const toast = useToast();
     const platform = usePlatform();
     const core = useCore();
     const routeFocused = useRouteFocused();
     const nativePlayback = typeof window !== 'undefined' ? window.CinematicAndroid : null;
-    const usesCinematicPlayer = typeof nativePlayback?.openNativePlayer === 'function';
+    const usesCinematicPlayer = typeof nativePlayback?.openNativePlayerSession === 'function' ||
+        typeof nativePlayback?.openNativePlayer === 'function';
 
     const [menuOpen, openMenu, closeMenu, toggleMenu] = useBinaryState(false);
 
@@ -134,6 +135,7 @@ const Stream = ({ className, videoId, videoReleased, addonName, badges, bestMatc
             }
 
             if (typeof streamLink !== 'string' || streamLink.length === 0) {
+                window.dispatchEvent(new CustomEvent('nuvyro-smart-play-failed'));
                 toast.show({
                     type: 'error',
                     title: 'המקור עדיין לא מוכן לניגון',
@@ -142,11 +144,14 @@ const Stream = ({ className, videoId, videoReleased, addonName, badges, bestMatc
                 return;
             }
 
-            const opened = nativePlayback.openNativePlayer(streamLink, videoId || '', name || description || addonName || 'NUVYRO');
+            const opened = typeof nativePlayback.openNativePlayerSession === 'function' ?
+                nativePlayback.openNativePlayerSession(streamLink, videoId || '', metaId || '', name || description || addonName || 'NUVYRO')
+                : nativePlayback.openNativePlayer(streamLink, videoId || '', name || description || addonName || 'NUVYRO');
             if (opened) {
                 return;
             }
 
+            window.dispatchEvent(new CustomEvent('nuvyro-smart-play-failed'));
             toast.show({
                 type: 'error',
                 title: 'לא ניתן לפתוח את המקור בנגן הפנימי',
@@ -164,7 +169,7 @@ const Stream = ({ className, videoId, videoReleased, addonName, badges, bestMatc
             });
         }
 
-    }, [props.onClick, profile.settings, markVideoAsWatched, streamLink, videoId, name, description, addonName, nativePlayback, usesCinematicPlayer]);
+    }, [props.onClick, profile.settings, markVideoAsWatched, streamLink, videoId, metaId, name, description, addonName, nativePlayback, usesCinematicPlayer]);
 
     const copyMagnetLink = React.useCallback((event) => {
         event.preventDefault();
@@ -342,6 +347,7 @@ Stream.Placeholder = StreamPlaceholder;
 Stream.propTypes = {
     className: PropTypes.string,
     videoId: PropTypes.string,
+    metaId: PropTypes.string,
     videoReleased: PropTypes.instanceOf(Date),
     addonName: PropTypes.string,
     badges: PropTypes.arrayOf(PropTypes.string),

@@ -78,9 +78,16 @@ const Video = ({ className, id, title, thumbnail, season, episode, released, upc
         selectVideo();
 
         if (deepLinks && typeof deepLinks.metaDetailsStreams === 'string') {
+            if (typeof window.CinematicAndroid?.openNativePlayerSession === 'function') {
+                try {
+                    sessionStorage.setItem('nuvyro.autoplayVideoId', id || 'next');
+                } catch (_) {
+                    // Smart Play remains available even when storage is blocked.
+                }
+            }
             navigate(toPath(deepLinks.metaDetailsStreams), { replace: !platform.isMobile });
         }
-    }, [deepLinks, navigate, platform.isMobile, selectVideo]);
+    }, [deepLinks, id, navigate, platform.isMobile, selectVideo]);
     const playButtonOnClick = React.useCallback((event) => {
         event.preventDefault();
         event.stopPropagation();

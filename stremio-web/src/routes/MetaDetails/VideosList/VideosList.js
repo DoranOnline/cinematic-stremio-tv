@@ -100,6 +100,19 @@ const VideosList = ({ className, metaItem, libraryItem, season, seasonOnSelect, 
     }, [selectedSeason]);
 
     const [search, setSearch] = React.useState('');
+    const [nativeProgressVersion, setNativeProgressVersion] = React.useState(0);
+    React.useEffect(() => {
+        const refresh = () => setNativeProgressVersion((value) => value + 1);
+        window.addEventListener('nuvyro-playback-progress', refresh);
+        return () => window.removeEventListener('nuvyro-playback-progress', refresh);
+    }, []);
+    const nativeProgress = React.useMemo(() => {
+        try {
+            return JSON.parse(localStorage.getItem('nuvyro.playbackProgress') || '{}');
+        } catch (_) {
+            return {};
+        }
+    }, [nativeProgressVersion]);
     const searchInputOnChange = React.useCallback((event) => {
         setSearch(event.currentTarget.value);
     }, []);
@@ -203,7 +216,7 @@ const VideosList = ({ className, metaItem, libraryItem, season, seasonOnSelect, 
                                                 released={video.released}
                                                 upcoming={video.upcoming}
                                                 watched={video.watched}
-                                                progress={video.progress}
+                                                progress={nativeProgress[video.id]?.ended ? 100 : (nativeProgress[video.id]?.progress ?? video.progress)}
                                                 deepLinks={video.deepLinks}
                                                 scheduled={video.scheduled}
                                                 seasonWatched={seasonWatched}

@@ -245,3 +245,79 @@
 
     }
 }
+
+.smart-play-panel {
+    position: absolute;
+    inset: 7rem 4rem 3rem;
+    z-index: 12;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 24rem;
+    padding: 3rem;
+    border: 1px solid rgba(240, 45, 98, 0.35);
+    border-radius: 2rem;
+    background:
+        radial-gradient(circle at 50% 35%, rgba(122, 92, 255, 0.18), transparent 38%),
+        rgba(12, 13, 18, 0.96);
+    box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.55);
+    text-align: center;
+}
+
+.smart-play-orbit {
+    width: 4.5rem;
+    height: 4.5rem;
+    margin-bottom: 1.5rem;
+    border: 0.32rem solid rgba(246, 241, 234, 0.16);
+    border-top-color: #f02d62;
+    border-right-color: #7a5cff;
+    border-radius: 50%;
+    animation: nuvyro-smart-spin 0.9s linear infinite;
+}
+
+.smart-play-kicker {
+    margin-bottom: 0.75rem;
+    color: #f02d62;
+    font-size: 0.9rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+}
+
+.smart-play-title {
+    color: #f6f1ea;
+    font-size: 2.2rem;
+    font-weight: 750;
+}
+
+.smart-play-copy {
+    max-width: 34rem;
+    margin-top: 0.8rem;
+    color: rgba(246, 241, 234, 0.68);
+    font-size: 1.15rem;
+}
+
+.smart-play-more {
+    margin-top: 2rem;
+    min-width: 12rem;
+    padding: 0.9rem 1.5rem;
+    border-radius: 999px;
+    color: #f6f1ea;
+    background: rgba(246, 241, 234, 0.09);
+
+    &:focus {
+        outline: 0.18rem solid #f02d62;
+        outline-offset: 0.25rem;
+        background: rgba(240, 45, 98, 0.2);
+        transform: scale(1.05);
+    }
+}
+
+.smart-play-hidden {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+@keyframes nuvyro-smart-spin {
+    to { transform: rotate(360deg); }
+}

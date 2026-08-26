@@ -37,7 +37,7 @@ const MetaRow = ({ className, title, catalog, message, itemComponent, notificati
                 }
                 {
                     href ?
-                        <Button className={styles['see-all-container']} title={t.string('BUTTON_SEE_ALL')} href={href} tabIndex={-1}>
+                        <Button data-nuvyro-see-all={'true'} className={styles['see-all-container']} title={t.string('BUTTON_SEE_ALL')} href={href} tabIndex={0}>
                             <div className={styles['label']}>{ t.string('BUTTON_SEE_ALL') }</div>
                             <Icon className={styles['icon']} name={'chevron-forward'} />
                         </Button>

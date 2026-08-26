@@ -33,10 +33,12 @@
             border-radius: 2.5rem;
             opacity: 0.6;
 
-            &:hover, &:focus {
+            &:hover, &:focus, &:focus-visible {
                 outline: none;
-                background-color: var(--overlay-color);
+                background: linear-gradient(135deg, rgba(240, 45, 98, 0.28), rgba(122, 92, 255, 0.22));
+                box-shadow: 0 0 0 0.16rem #f02d62, 0 0 1.4rem rgba(240, 45, 98, 0.35);
                 opacity: 1;
+                transform: scale(1.05);
             }
 
             .label {

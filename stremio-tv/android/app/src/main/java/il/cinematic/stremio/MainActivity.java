@@ -13,6 +13,8 @@ import android.webkit.WebSettings;
 import android.webkit.JavascriptInterface;
 import android.util.Log;
 
+import org.json.JSONObject;
+
 import androidx.activity.OnBackPressedCallback;
 
 import com.getcapacitor.BridgeActivity;
@@ -40,7 +42,7 @@ public class MainActivity extends BridgeActivity {
         webView.setBackgroundColor(Color.rgb(7, 8, 10));
         webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
         webView.getSettings().setUserAgentString(
-            webView.getSettings().getUserAgentString() + " NuvyroTV/2.3.0"
+            webView.getSettings().getUserAgentString() + " NuvyroTV/2.3.1"
         );
         webView.addJavascriptInterface(
             new NativeStatusBridge(), WebNativeBridgeContract.LEGACY_OBJECT_NAME);
@@ -83,13 +85,33 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != PLAYER_REQUEST_CODE || resultCode != RESULT_OK || data == null ||
-            !data.getBooleanExtra(NativePlayerActivity.EXTRA_PLAYBACK_ENDED, false)) return;
+        if (requestCode != PLAYER_REQUEST_CODE || resultCode != RESULT_OK || data == null) return;
         final WebView webView = getBridge() == null ? null : getBridge().getWebView();
         if (webView != null) {
-            webView.post(() -> webView.evaluateJavascript(
-                "window.dispatchEvent(new CustomEvent('" +
-                    WebNativeBridgeContract.EVENT_PLAYBACK_ENDED + "'));", null));
+            final boolean ended = data.getBooleanExtra(NativePlayerActivity.EXTRA_PLAYBACK_ENDED, false);
+            final JSONObject detail = new JSONObject();
+            try {
+                detail.put("videoId", data.getStringExtra(NativePlayerActivity.EXTRA_VIDEO_ID));
+                detail.put("metaId", data.getStringExtra(NativePlayerActivity.EXTRA_META_ID));
+                detail.put("position", data.getLongExtra(NativePlayerActivity.EXTRA_PLAYBACK_POSITION, 0L));
+                detail.put("duration", data.getLongExtra(NativePlayerActivity.EXTRA_PLAYBACK_DURATION, 0L));
+                detail.put("ended", ended);
+            } catch (Exception ignored) {
+                return;
+            }
+            webView.post(() -> {
+                final String payload = detail.toString();
+                webView.evaluateJavascript(
+                    "window.dispatchEvent(new CustomEvent('" +
+                        WebNativeBridgeContract.EVENT_PLAYBACK_PROGRESS +
+                        "',{detail:" + payload + "}));", null);
+                if (ended) {
+                    webView.evaluateJavascript(
+                        "window.dispatchEvent(new CustomEvent('" +
+                            WebNativeBridgeContract.EVENT_PLAYBACK_ENDED +
+                            "',{detail:" + payload + "}));", null);
+                }
+            });
         }
     }
 
@@ -182,6 +204,11 @@ public class MainActivity extends BridgeActivity {
     private final class NativeStatusBridge {
         @JavascriptInterface
         public boolean openNativePlayer(String streamUrl, String videoId, String title) {
+            return openNativePlayerSession(streamUrl, videoId, "", title);
+        }
+
+        @JavascriptInterface
+        public boolean openNativePlayerSession(String streamUrl, String videoId, String metaId, String title) {
             if (streamUrl == null || streamUrl.isEmpty()) return false;
             final Uri uri = Uri.parse(streamUrl);
             if (!"http".equalsIgnoreCase(uri.getScheme()) && !"https".equalsIgnoreCase(uri.getScheme())) {
@@ -192,6 +219,7 @@ public class MainActivity extends BridgeActivity {
                 final Intent intent = new Intent(MainActivity.this, NativePlayerActivity.class);
                 intent.putExtra(NativePlayerActivity.EXTRA_STREAM_URL, streamUrl);
                 intent.putExtra(NativePlayerActivity.EXTRA_VIDEO_ID, session.getVideoId());
+                intent.putExtra(NativePlayerActivity.EXTRA_META_ID, metaId == null ? "" : metaId);
                 intent.putExtra(NativePlayerActivity.EXTRA_TITLE, session.getTitle());
                 startActivityForResult(intent, PLAYER_REQUEST_CODE);
             });
