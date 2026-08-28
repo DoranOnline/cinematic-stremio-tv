@@ -8,6 +8,7 @@ const { default: Icon } = require('@stremio/stremio-icons/react');
 const { withCoreSuspender } = require('stremio/common');
 const { default: getMetaDetailsHref } = require('stremio/common/getMetaDetailsHref');
 const useBoard = require('../Board/useBoard');
+const { getLiveCategories, channelMatchesCategory, getProgramLabel } = require('./liveChannels');
 const styles = require('./styles');
 
 const FAVORITES_KEY = 'nuvyro.liveFavorites';
@@ -34,6 +35,7 @@ const Live = () => {
     const { i18n } = useTranslation();
     const [board, loadBoardRows, refreshBoard] = useBoard();
     const [filter, setFilter] = React.useState('all');
+    const [category, setCategory] = React.useState('');
     const [selectedId, setSelectedId] = React.useState(null);
     const [favorites, setFavorites] = React.useState(() => readIds(FAVORITES_KEY));
     const [recent, setRecent] = React.useState(() => readIds(RECENT_KEY));
@@ -44,6 +46,10 @@ const Live = () => {
         all: 'הכול',
         favorites: 'מועדפים',
         recent: 'אחרונים',
+        categories: 'קטגוריות',
+        allCategories: 'כל הערוצים',
+        channels: 'ערוצים',
+        guideUnavailable: 'לוח שידורים לא סופק על ידי התוסף',
         refresh: 'רענון',
         watch: 'פתח ערוץ',
         connecting: 'מרעננים את רשימת הערוצים…',
@@ -57,6 +63,10 @@ const Live = () => {
         all: 'All',
         favorites: 'Favorites',
         recent: 'Recent',
+        categories: 'Categories',
+        allCategories: 'All channels',
+        channels: 'Channels',
+        guideUnavailable: 'Program guide is not supplied by this add-on',
         refresh: 'Refresh',
         watch: 'Open channel',
         connecting: 'Refreshing your channel list…',
@@ -101,12 +111,14 @@ const Live = () => {
     }, [board.catalogs]);
 
     const visibleChannels = React.useMemo(() => {
-        if (filter === 'favorites') return channels.filter((item) => favorites.includes(item.id));
+        let filtered = channels;
+        if (filter === 'favorites') filtered = channels.filter((item) => favorites.includes(item.id));
         if (filter === 'recent') {
-            return recent.map((id) => channels.find((item) => item.id === id)).filter(Boolean);
+            filtered = recent.map((id) => channels.find((item) => item.id === id)).filter(Boolean);
         }
-        return channels;
-    }, [channels, favorites, recent, filter]);
+        return filtered.filter((item) => channelMatchesCategory(item, category));
+    }, [channels, favorites, recent, filter, category]);
+    const categories = React.useMemo(() => getLiveCategories(channels), [channels]);
     const selectedChannel = React.useMemo(() => visibleChannels.find((item) => item.id === selectedId) || visibleChannels[0] || null, [visibleChannels, selectedId]);
     const loading = React.useMemo(() => (board.catalogs || []).some((catalog) => catalog.content?.type === 'Loading'), [board.catalogs]);
 
@@ -134,18 +146,31 @@ const Live = () => {
 
     React.useEffect(() => {
         const handleDirectionalFocus = (event) => {
-            if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+            if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
             const activeElement = document.activeElement;
             const activeHref = activeElement?.getAttribute?.('href') || '';
             const activeFilter = activeElement?.closest?.('[data-nuvyro-live-filter="true"]');
+            const activeCategory = activeElement?.closest?.('[data-nuvyro-live-category="true"]');
             const activeChannel = activeElement?.closest?.('[data-nuvyro-live-channel="true"]');
             if (event.key === 'ArrowDown' && (activeHref === '#/live' || activeFilter)) {
+                const selected = liveContentRef.current?.querySelector('[data-nuvyro-live-category="true"].' + styles['selected']) || liveContentRef.current?.querySelector('[data-nuvyro-live-category="true"]');
+                if (selected instanceof HTMLElement) {
+                    event.preventDefault();
+                    selected.focus({ preventScroll: false });
+                }
+            } else if (event.key === 'ArrowRight' && activeCategory) {
                 const selected = liveContentRef.current?.querySelector('[data-nuvyro-live-channel="true"]');
                 if (selected instanceof HTMLElement) {
                     event.preventDefault();
                     selected.focus({ preventScroll: false });
                 }
-            } else if (event.key === 'ArrowUp' && activeChannel === liveContentRef.current?.querySelector('[data-nuvyro-live-channel="true"]')) {
+            } else if (event.key === 'ArrowLeft' && activeChannel) {
+                const selected = liveContentRef.current?.querySelector('[data-nuvyro-live-category="true"].' + styles['selected']) || liveContentRef.current?.querySelector('[data-nuvyro-live-category="true"]');
+                if (selected instanceof HTMLElement) {
+                    event.preventDefault();
+                    selected.focus({ preventScroll: false });
+                }
+            } else if (event.key === 'ArrowUp' && (activeCategory === liveContentRef.current?.querySelector('[data-nuvyro-live-category="true"]') || activeChannel === liveContentRef.current?.querySelector('[data-nuvyro-live-channel="true"]'))) {
                 const selectedFilter = liveContentRef.current?.querySelector('[data-nuvyro-live-filter="true"].' + styles['selected']);
                 if (selectedFilter instanceof HTMLElement) {
                     event.preventDefault();
@@ -190,13 +215,27 @@ const Live = () => {
                                 <section className={styles['empty']}><p>{copy.noMatches}</p></section>
                                 :
                                 <section className={styles['live-workspace']}>
+                                    <aside className={styles['categories']} aria-label={copy.categories}>
+                                        <strong>{copy.categories}</strong>
+                                        {[['', copy.allCategories], ...categories.map((value) => [value, value])].map(([value, label]) => (
+                                            <Button
+                                                key={value || 'all'}
+                                                data-nuvyro-live-category={'true'}
+                                                className={classnames(styles['category'], { [styles['selected']]: category === value })}
+                                                onClick={() => setCategory(value)}
+                                            >
+                                                <span>{label}</span>
+                                                <small>{value ? channels.filter((item) => channelMatchesCategory(item, value)).length : channels.length}</small>
+                                            </Button>
+                                        ))}
+                                    </aside>
                                     <div className={styles['preview']}>
                                         <Image className={styles['preview-art']} src={selectedChannel.background || selectedChannel.poster} renderFallback={renderArtworkFallback} alt={' '} />
                                         <div className={styles['preview-shade']} />
                                         <div className={styles['preview-copy']}>
                                             <span className={styles['live-badge']}>{copy.live}</span>
                                             <h2>{selectedChannel.name}</h2>
-                                            {selectedChannel.catalogName ? <p>{selectedChannel.catalogName}</p> : null}
+                                            <p>{getProgramLabel(selectedChannel) || selectedChannel.catalogName || copy.guideUnavailable}</p>
                                             <Button className={styles['watch']} href={getMetaDetailsHref(selectedChannel.deepLinks)} onClick={() => rememberRecent(selectedChannel.id)}>
                                                 <Icon name={'play'} /><span>{copy.watch}</span>
                                             </Button>
@@ -204,6 +243,7 @@ const Live = () => {
                                         {loading ? <div className={styles['updating']}><div className={styles['spinner']} />{copy.connecting}</div> : null}
                                     </div>
                                     <div className={styles['channels']}>
+                                        <div className={styles['channels-title']}><strong>{copy.channels}</strong><span>{visibleChannels.length}</span></div>
                                         {visibleChannels.map((channel) => (
                                             <article key={channel.id} className={classnames(styles['channel-card'], { [styles['selected-channel']]: selectedChannel.id === channel.id })}>
                                                 <Button
@@ -218,7 +258,7 @@ const Live = () => {
                                                     <div className={styles['channel-copy']}>
                                                         <span className={styles['live-badge']}>{copy.live}</span>
                                                         <strong>{channel.name}</strong>
-                                                        {channel.catalogName ? <small>{channel.catalogName}</small> : null}
+                                                        <small>{getProgramLabel(channel) || channel.catalogName || copy.guideUnavailable}</small>
                                                     </div>
                                                     <Icon className={styles['play']} name={'play'} />
                                                 </Button>
