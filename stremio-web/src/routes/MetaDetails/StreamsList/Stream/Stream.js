@@ -10,6 +10,7 @@ const { useProfile, usePlatform, useToast, useBinaryState } = require('stremio/c
 const { Button, Image, Popup } = require('stremio/components');
 const { default: useRouteFocused } = require('stremio/common/useRouteFocused');
 const StreamPlaceholder = require('./StreamPlaceholder');
+const { createMarkVideoAsWatchedAction } = require('./nativePlaybackSync');
 const styles = require('./styles');
 
 const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, bestMatch, name, description, thumbnail, progress, deepLinks, playbackSources, ...props }) => {
@@ -105,15 +106,11 @@ const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, 
     }, [deepLinks]);
 
     const markVideoAsWatched = React.useCallback(() => {
-        if (typeof videoId === 'string') {
-            core.transport.dispatch({
-                action: 'MetaDetails',
-                args: {
-                    action: 'MarkVideoAsWatched',
-                    args: [{ id: videoId, released: videoReleased }, true]
-                }
-            });
-        }
+        const action = createMarkVideoAsWatchedAction(videoId, videoReleased);
+        if (action === null) return;
+
+        Promise.resolve(core.transport.dispatch(action))
+            .finally(() => window.dispatchEvent(new CustomEvent('nuvyro-library-refresh-request')));
     }, [videoId, videoReleased]);
 
     const onClick = React.useCallback((event) => {
@@ -152,6 +149,10 @@ const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, 
                     nativePlayback.openNativePlayerSession(streamLink, videoId || '', metaId || '', title)
                     : nativePlayback.openNativePlayer(streamLink, videoId || '', title);
             if (opened) {
+                // Native playback bypasses Stremio's web Player model. Mirror the
+                // external-player path so the account history/continue-watching
+                // models receive the episode instead of only local progress.
+                markVideoAsWatched();
                 return;
             }
 

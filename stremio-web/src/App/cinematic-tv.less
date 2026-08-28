@@ -793,3 +793,103 @@
         }
     }
 }
+
+// TV landscape shell inspired by the fast, persistent navigation pattern used
+// by set-top-box products. Keep NUVYRO's own colors, icons and content.
+@media (min-width: 700px) and (orientation: landscape) {
+    :global {
+        html.cinematic-native {
+            --vertical-nav-bar-size: 12.5rem;
+        }
+
+        html.cinematic-native [class*='vertical-nav-bar-container'] {
+            top: var(--horizontal-nav-bar-size) !important;
+            right: auto !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            width: var(--vertical-nav-bar-size) !important;
+            max-width: none !important;
+            height: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            justify-content: flex-start !important;
+            gap: 0.38rem !important;
+            padding: 1.1rem 0.8rem !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.07);
+            background: linear-gradient(180deg, rgba(13, 19, 29, 0.98), rgba(8, 11, 18, 0.98)) !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+        }
+
+        html.cinematic-native [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'] {
+            flex: 0 0 3.4rem !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            height: 3.4rem !important;
+            margin: 0 !important;
+            padding: 0 1rem !important;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            gap: 0.9rem !important;
+            border: 1px solid transparent;
+            border-radius: 0.75rem !important;
+            color: rgba(240, 246, 255, 0.72) !important;
+            background: transparent !important;
+        }
+
+        html.cinematic-native [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'] [class*='icon'] {
+            width: 1.5rem !important;
+            height: 1.5rem !important;
+            margin: 0 !important;
+            color: currentColor !important;
+            opacity: 1 !important;
+        }
+
+        html.cinematic-native [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'] [class*='label'] {
+            display: block !important;
+            padding: 0 !important;
+            color: currentColor !important;
+            font-size: 0.92rem !important;
+            font-weight: 720 !important;
+            letter-spacing: 0.01em !important;
+            opacity: 1 !important;
+        }
+
+        html.cinematic-native [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container'].selected,
+        html.cinematic-native [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container']:focus {
+            outline: none !important;
+            border-color: rgba(135, 181, 255, 0.72) !important;
+            color: #ffffff !important;
+            background: linear-gradient(90deg, #356ee8, #684de1) !important;
+            box-shadow: 0 0.65rem 1.8rem rgba(43, 91, 201, 0.32) !important;
+            transform: none !important;
+        }
+
+        html.cinematic-native [class*='vertical-nav-bar-container'] [class*='nav-tab-button-container']:focus::before {
+            content: none !important;
+        }
+
+        html.cinematic-native [class*='nav-content-container'] {
+            left: var(--vertical-nav-bar-size) !important;
+        }
+
+        html.cinematic-native [class*='board-content'] [class*='cinematic-spotlight'] {
+            min-height: clamp(17rem, 34vh, 25rem) !important;
+            margin: 0.8rem 0.8rem 1.6rem !important;
+            border-radius: 1rem !important;
+        }
+
+        html.cinematic-native [class*='board-content'] [class*='spotlight-copy'] {
+            min-height: clamp(17rem, 34vh, 25rem) !important;
+            padding: 2.2rem 3rem !important;
+        }
+
+        html.cinematic-native [class*='board-content'] [class*='board-row'] {
+            margin-top: 0.45rem !important;
+            margin-bottom: 1.35rem !important;
+        }
+    }
+}

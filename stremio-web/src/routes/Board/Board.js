@@ -54,11 +54,14 @@ const Board = () => {
         const refreshWhenVisible = () => {
             if (document.visibilityState === 'visible') refreshBoard();
         };
+        const refreshAfterNativePlayback = () => refreshBoard();
         const interval = window.setInterval(refreshWhenVisible, 5 * 60 * 1000);
         document.addEventListener('visibilitychange', refreshWhenVisible);
+        window.addEventListener('nuvyro-library-refresh-request', refreshAfterNativePlayback);
         return () => {
             window.clearInterval(interval);
             document.removeEventListener('visibilitychange', refreshWhenVisible);
+            window.removeEventListener('nuvyro-library-refresh-request', refreshAfterNativePlayback);
         };
     }, [refreshBoard]);
     return (
