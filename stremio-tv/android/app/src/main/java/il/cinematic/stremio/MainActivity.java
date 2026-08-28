@@ -266,5 +266,15 @@ public class MainActivity extends BridgeActivity {
             final String url = EmbeddedStreamingServer.getBaseUrl();
             return url == null ? "" : url;
         }
+
+        @JavascriptInterface
+        public String getAppVersion() {
+            return appUpdateManager == null ? "" : appUpdateManager.getCurrentVersion();
+        }
+
+        @JavascriptInterface
+        public void checkForAppUpdate() {
+            if (appUpdateManager != null) appUpdateManager.requestUpdate();
+        }
     }
 }

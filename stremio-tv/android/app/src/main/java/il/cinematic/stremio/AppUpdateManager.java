@@ -40,6 +40,7 @@ final class AppUpdateManager {
     private long activeDownloadId = -1L;
     private File downloadedApk;
     private boolean promptShown;
+    private AlertDialog checkingDialog;
 
     private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
         @Override
@@ -59,7 +60,7 @@ final class AppUpdateManager {
         final IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
         ContextCompat.registerReceiver(
             activity, downloadReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
-        activity.getWindow().getDecorView().postDelayed(this::checkForUpdate, 3500L);
+        activity.getWindow().getDecorView().postDelayed(() -> checkForUpdate(false), 3500L);
     }
 
     void resume() {
@@ -77,7 +78,31 @@ final class AppUpdateManager {
         executor.shutdownNow();
     }
 
-    private void checkForUpdate() {
+    String getCurrentVersion() {
+        try {
+            return activity.getPackageManager()
+                .getPackageInfo(activity.getPackageName(), 0).versionName;
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    void requestUpdate() {
+        activity.runOnUiThread(() -> {
+            if (isValidApk(downloadedApk)) {
+                openInstallerWhenAllowed();
+                return;
+            }
+            if (activeDownloadId != -1L) {
+                Toast.makeText(activity, "העדכון כבר יורד. ההתקנה תיפתח בסיום.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            showCheckingDialog();
+            checkForUpdate(true);
+        });
+    }
+
+    private void checkForUpdate(boolean userInitiated) {
         executor.execute(() -> {
             HttpURLConnection connection = null;
             try {
@@ -87,6 +112,7 @@ final class AppUpdateManager {
                 connection.setRequestProperty("Accept", "application/vnd.github+json");
                 connection.setRequestProperty("User-Agent", "NUVYRO-TV-Android");
                 if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
+                    showCheckFailure(userInitiated);
                     return;
                 }
 
@@ -98,9 +124,9 @@ final class AppUpdateManager {
 
                 final JSONObject release = new JSONObject(body.toString());
                 final String latestVersion = release.optString("tag_name", "");
-                final String currentVersion = activity.getPackageManager()
-                    .getPackageInfo(activity.getPackageName(), 0).versionName;
+                final String currentVersion = getCurrentVersion();
                 if (!VersionComparator.isNewer(latestVersion, currentVersion)) {
+                    if (userInitiated) activity.runOnUiThread(() -> showUpToDate(currentVersion));
                     return;
                 }
 
@@ -111,20 +137,23 @@ final class AppUpdateManager {
                     final String name = asset.optString("name", "");
                     final String url = asset.optString("browser_download_url", "");
                     if (name.endsWith(".apk") && url.startsWith("https://github.com/")) {
-                        activity.runOnUiThread(() -> showUpdatePrompt(latestVersion, url));
+                        activity.runOnUiThread(() -> showUpdatePrompt(latestVersion, url, userInitiated));
                         return;
                     }
                 }
+                showCheckFailure(userInitiated);
             } catch (Exception ignored) {
                 // Updates are optional. Never block startup on network/API errors.
+                showCheckFailure(userInitiated);
             } finally {
                 if (connection != null) connection.disconnect();
             }
         });
     }
 
-    private void showUpdatePrompt(String version, String apkUrl) {
-        if (promptShown || activity.isFinishing()) return;
+    private void showUpdatePrompt(String version, String apkUrl, boolean userInitiated) {
+        dismissCheckingDialog();
+        if ((!userInitiated && promptShown) || activity.isFinishing()) return;
         promptShown = true;
         new AlertDialog.Builder(activity)
             .setTitle("עדכון חדש זמין")
@@ -132,6 +161,47 @@ final class AppUpdateManager {
             .setPositiveButton("עדכן עכשיו", (dialog, which) -> download(apkUrl))
             .setNegativeButton("אחר כך", null)
             .show();
+    }
+
+    private void showCheckingDialog() {
+        dismissCheckingDialog();
+        checkingDialog = new AlertDialog.Builder(activity)
+            .setTitle("עדכוני NUVYRO")
+            .setMessage("בודק אם קיימת גרסה חדשה…")
+            .setCancelable(false)
+            .setNegativeButton("ביטול", null)
+            .show();
+    }
+
+    private void showUpToDate(String currentVersion) {
+        dismissCheckingDialog();
+        if (activity.isFinishing()) return;
+        new AlertDialog.Builder(activity)
+            .setTitle("האפליקציה מעודכנת")
+            .setMessage("מותקנת אצלך הגרסה החדשה ביותר: " + currentVersion)
+            .setPositiveButton("סגור", null)
+            .show();
+    }
+
+    private void showCheckFailure(boolean userInitiated) {
+        if (!userInitiated) return;
+        activity.runOnUiThread(() -> {
+            dismissCheckingDialog();
+            if (activity.isFinishing()) return;
+            new AlertDialog.Builder(activity)
+                .setTitle("לא הצלחנו לבדוק עדכון")
+                .setMessage("בדוק את החיבור לאינטרנט ונסה שוב.")
+                .setPositiveButton("נסה שוב", (dialog, which) -> requestUpdate())
+                .setNegativeButton("סגור", null)
+                .show();
+        });
+    }
+
+    private void dismissCheckingDialog() {
+        if (checkingDialog != null) {
+            checkingDialog.dismiss();
+            checkingDialog = null;
+        }
     }
 
     private void download(String apkUrl) {
@@ -151,7 +221,7 @@ final class AppUpdateManager {
             .setMimeType("application/vnd.android.package-archive");
         final DownloadManager manager = (DownloadManager) activity.getSystemService(Context.DOWNLOAD_SERVICE);
         activeDownloadId = manager.enqueue(request);
-        Toast.makeText(activity, "העדכון יורד ברקע", Toast.LENGTH_LONG).show();
+        Toast.makeText(activity, "העדכון יורד. חלון ההתקנה ייפתח אוטומטית.", Toast.LENGTH_LONG).show();
     }
 
     private void openInstallerWhenAllowed() {
@@ -189,8 +259,10 @@ final class AppUpdateManager {
             final int status = cursor.getInt(
                 cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
             if (status == DownloadManager.STATUS_SUCCESSFUL && isValidApk(downloadedApk)) {
+                activeDownloadId = -1L;
                 openInstallerWhenAllowed();
             } else {
+                activeDownloadId = -1L;
                 if (downloadedApk != null && downloadedApk.exists()) downloadedApk.delete();
                 Toast.makeText(activity, "ההורדה לא הושלמה. נסה שוב.", Toast.LENGTH_LONG).show();
             }
