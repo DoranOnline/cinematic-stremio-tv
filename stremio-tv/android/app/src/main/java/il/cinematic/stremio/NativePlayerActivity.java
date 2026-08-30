@@ -107,6 +107,7 @@ public final class NativePlayerActivity extends Activity {
     private boolean userSeeking;
     private boolean initialTrackPreferencesApplied;
     private boolean playbackEndReported;
+    private boolean playbackStarted;
     private long lastSavedAt;
     private String selectedLanguage;
     private boolean controlsLocked;
@@ -369,6 +370,14 @@ public final class NativePlayerActivity extends Activity {
     @Override
     protected void onStart() {
         super.onStart();
+        if (selectedLanguage == null || selectedLanguage.isEmpty()) return;
+        startOrOfferResume();
+        handler.post(progressTicker);
+    }
+
+    private void startOrOfferResume() {
+        if (playbackStarted || isFinishing()) return;
+        playbackStarted = true;
         final long saved = preferences().getLong(progressKey(), 0L);
         if (saved >= 30_000L) {
             new AlertDialog.Builder(this)
@@ -387,7 +396,6 @@ public final class NativePlayerActivity extends Activity {
         } else {
             startSelectedEngine();
         }
-        handler.post(progressTicker);
     }
 
     private void startSelectedEngine() {
@@ -442,6 +450,10 @@ public final class NativePlayerActivity extends Activity {
                 if (state == Player.STATE_READY) {
                     playerState = exoPlayer != null && exoPlayer.isPlaying() ? PlayerState.PLAYING : PlayerState.PAUSED;
                     applyPendingResume();
+                    // onRenderedFirstFrame is only guaranteed for the first
+                    // frame. A later seek/rebuffer can return to READY without
+                    // firing it again, so dismiss the stale loading overlay.
+                    if (firstFrameRendered) hideStatus();
                 }
                 if (state == Player.STATE_ENDED) {
                     playerState = PlayerState.ENDED;
@@ -681,6 +693,9 @@ public final class NativePlayerActivity extends Activity {
                 applyControlLabels();
                 applyPreferredTracks();
                 dialog.dismiss();
+                startOrOfferResume();
+                handler.removeCallbacks(progressTicker);
+                handler.post(progressTicker);
                 showControls(false);
             })
             .setCancelable(!selectedLanguage.isEmpty())
@@ -693,9 +708,12 @@ public final class NativePlayerActivity extends Activity {
         forwardButton.setText(text("10 ↷", "10 ↷"));
         speedButton.setText(text("מהירות", "Speed"));
         languageButton.setText(text("שפה", "Language"));
-        tracksButton.setText(text("שמע וכתוביות", "Audio & subtitles"));
-        lockButton.setText(text("נעילת מסך", "Lock controls"));
-        sourceButton.setText(text("מקור אחר", "Other source"));
+        tracksButton.setText(text("שמע / כתוביות", "Audio / Subs"));
+        lockButton.setText(text("נעילה", "Lock"));
+        sourceButton.setText(text("מקור", "Source"));
+        tracksButton.setContentDescription(text("בחירת שמע וכתוביות", "Choose audio and subtitles"));
+        lockButton.setContentDescription(text("נעילת פקדי הנגן", "Lock player controls"));
+        sourceButton.setContentDescription(text("בחירת מקור אחר", "Choose another source"));
         closeButton.setContentDescription(text("סגירת נגן", "Close player"));
         updatePlayPauseLabel();
     }
@@ -957,6 +975,7 @@ public final class NativePlayerActivity extends Activity {
     protected void onStop() {
         saveProgress();
         playerState = PlayerState.IDLE;
+        playbackStarted = false;
         handler.removeCallbacksAndMessages(null);
         releasePlayers();
         super.onStop();

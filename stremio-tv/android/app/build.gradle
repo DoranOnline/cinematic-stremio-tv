@@ -18,8 +18,8 @@ android {
         applicationId "il.cinematic.stremio"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 32
-        versionName "2.5.3"
+        versionCode 33
+        versionName "2.5.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             // Target physical Android TV and tablet hardware.
@@ -65,6 +65,7 @@ dependencies {
     implementation "org.videolan.android:libvlc-all:3.6.0"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test:core:1.7.0"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
 }

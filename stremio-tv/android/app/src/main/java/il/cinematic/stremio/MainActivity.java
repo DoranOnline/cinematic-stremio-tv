@@ -45,7 +45,7 @@ public class MainActivity extends BridgeActivity {
         webView.setBackgroundColor(Color.rgb(7, 8, 10));
         webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
         webView.getSettings().setUserAgentString(
-            webView.getSettings().getUserAgentString() + " NuvyroTV/2.5.0"
+            webView.getSettings().getUserAgentString() + " NuvyroTV/" + installedVersionName()
         );
         webView.addJavascriptInterface(
             new NativeStatusBridge(), WebNativeBridgeContract.LEGACY_OBJECT_NAME);
@@ -58,6 +58,15 @@ public class MainActivity extends BridgeActivity {
         });
         appUpdateManager = new AppUpdateManager(this);
         appUpdateManager.start();
+    }
+
+    private String installedVersionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception error) {
+            Log.w("NUVYRO", "Unable to read installed version", error);
+            return "unknown";
+        }
     }
 
     @Override
