@@ -31,6 +31,7 @@ public class MainActivity extends BridgeActivity {
         "})('%s');";
 
     private final RemoteKeyGate remoteKeyGate = new RemoteKeyGate(110L);
+    private final PlayerLaunchGate playerLaunchGate = new PlayerLaunchGate();
     private AppUpdateManager appUpdateManager;
     private boolean exitDialogVisible;
 
@@ -97,7 +98,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != PLAYER_REQUEST_CODE || resultCode != RESULT_OK || data == null) return;
+        if (requestCode != PLAYER_REQUEST_CODE) return;
+        playerLaunchGate.release();
+        if (resultCode != RESULT_OK || data == null) return;
         final WebView webView = getBridge() == null ? null : getBridge().getWebView();
         if (webView != null) {
             final boolean ended = data.getBooleanExtra(NativePlayerActivity.EXTRA_PLAYBACK_ENDED, false);
@@ -251,16 +254,25 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception error) {
                 Log.w("CinematicPlayer", "Ignoring invalid source queue", error);
             }
+            if (!playerLaunchGate.tryAcquire()) {
+                Log.i("CinematicPlayer", "Ignoring duplicate player launch while a session is active");
+                return true;
+            }
             final PlaybackSession session = PlaybackSession.fromLegacy(streamUrl, videoId, title);
             runOnUiThread(() -> {
-                final Intent intent = new Intent(MainActivity.this, NativePlayerActivity.class);
-                intent.putExtra(NativePlayerActivity.EXTRA_STREAM_URL, streamUrl);
-                intent.putExtra(NativePlayerActivity.EXTRA_VIDEO_ID, session.getVideoId());
-                intent.putExtra(NativePlayerActivity.EXTRA_META_ID, metaId == null ? "" : metaId);
-                intent.putExtra(NativePlayerActivity.EXTRA_TITLE, session.getTitle());
-                intent.putStringArrayListExtra(NativePlayerActivity.EXTRA_SOURCE_URLS, sourceUrls);
-                intent.putStringArrayListExtra(NativePlayerActivity.EXTRA_SOURCE_LABELS, sourceLabels);
-                startActivityForResult(intent, PLAYER_REQUEST_CODE);
+                try {
+                    final Intent intent = new Intent(MainActivity.this, NativePlayerActivity.class);
+                    intent.putExtra(NativePlayerActivity.EXTRA_STREAM_URL, streamUrl);
+                    intent.putExtra(NativePlayerActivity.EXTRA_VIDEO_ID, session.getVideoId());
+                    intent.putExtra(NativePlayerActivity.EXTRA_META_ID, metaId == null ? "" : metaId);
+                    intent.putExtra(NativePlayerActivity.EXTRA_TITLE, session.getTitle());
+                    intent.putStringArrayListExtra(NativePlayerActivity.EXTRA_SOURCE_URLS, sourceUrls);
+                    intent.putStringArrayListExtra(NativePlayerActivity.EXTRA_SOURCE_LABELS, sourceLabels);
+                    startActivityForResult(intent, PLAYER_REQUEST_CODE);
+                } catch (RuntimeException error) {
+                    playerLaunchGate.release();
+                    Log.e("CinematicPlayer", "Unable to launch native player", error);
+                }
             });
             return true;
         }
