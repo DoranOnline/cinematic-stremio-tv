@@ -21,11 +21,25 @@ const Board = () => {
     const [board, loadBoardRows, refreshBoard] = useBoard();
     const notifications = useNotifications();
     const profile = useProfile();
+    const displayCatalogs = React.useMemo(() => board.catalogs.filter((catalog) => {
+        const contentType = catalog?.request?.path?.type || catalog?.deepLinks?.discover?.type;
+        return contentType !== 'channel';
+    }), [board.catalogs]);
     const boardCatalogsOffset = continueWatchingPreview.items.length > 0 ? 1 : 0;
-    const spotlight = React.useMemo(() => {
-        const readyCatalog = board.catalogs.find((catalog) => catalog.content?.type === 'Ready' && catalog.content.content.length > 0);
-        return readyCatalog?.content.content[0] || null;
-    }, [board.catalogs]);
+    const spotlightItems = React.useMemo(() => {
+        const seen = new Set();
+        return displayCatalogs
+            .filter((catalog) => catalog.content?.type === 'Ready')
+            .flatMap((catalog) => catalog.content.content)
+            .filter((item) => {
+                const key = item.id || item.name;
+                if (!key || seen.has(key)) return false;
+                seen.add(key);
+                return Boolean(item.background || item.poster);
+            })
+            .slice(0, 4);
+    }, [displayCatalogs]);
+    const spotlight = spotlightItems[0] || null;
     const scrollContainerRef = React.useRef();
     const showStreamingServerWarning = React.useMemo(() => {
         return streamingServer.settings !== null && streamingServer.settings.type === 'Err' && (
@@ -71,17 +85,25 @@ const Board = () => {
                 <div ref={scrollContainerRef} className={styles['board-content']} onScroll={onScroll}>
                     {
                         spotlight ?
-                            <section className={styles['cinematic-spotlight']}>
-                                <Image className={styles['spotlight-art']} src={spotlight.background || spotlight.poster} alt={' '} />
-                                <div className={styles['spotlight-shade']} />
-                                <div className={styles['spotlight-copy']}>
-                                    <div className={styles['spotlight-kicker']} aria-hidden={'true'} />
-                                    <h1 className={styles['spotlight-title']}>{spotlight.name}</h1>
-                                    <div className={styles['spotlight-type']}>{spotlight.type}</div>
-                                    <Button className={styles['spotlight-action']} title={spotlight.name} href={getMetaDetailsHref(spotlight.deepLinks)}>
-                                        <span aria-hidden={'true'} />
-                                    </Button>
+                            <section className={styles['spotlight-grid']} aria-label={spotlight.name}>
+                                <div className={styles['cinematic-spotlight']}>
+                                    <Image className={styles['spotlight-art']} src={spotlight.background || spotlight.poster} alt={' '} />
+                                    <div className={styles['spotlight-shade']} />
+                                    <div className={styles['spotlight-copy']}>
+                                        <div className={styles['spotlight-kicker']}>{t.string('FEATURED')}</div>
+                                        <h1 className={styles['spotlight-title']}>{spotlight.name}</h1>
+                                        <div className={styles['spotlight-type']}>{spotlight.type}</div>
+                                        <Button className={styles['spotlight-action']} title={spotlight.name} href={getMetaDetailsHref(spotlight.deepLinks)}>
+                                            <span>{t.string('LIBRARY_DETAILS')}</span>
+                                        </Button>
+                                    </div>
                                 </div>
+                                {spotlightItems.slice(1).map((item) => (
+                                    <Button key={item.id || item.name} className={styles['spotlight-secondary']} title={item.name} href={getMetaDetailsHref(item.deepLinks)}>
+                                        <Image className={styles['spotlight-secondary-art']} src={item.background || item.poster} alt={' '} />
+                                        <span className={styles['spotlight-secondary-name']}>{item.name}</span>
+                                    </Button>
+                                ))}
                             </section>
                             :
                             <div className={styles['spotlight-placeholder']} />
@@ -98,7 +120,7 @@ const Board = () => {
                             :
                             null
                     }
-                    {board.catalogs.map((catalog, index) => {
+                    {displayCatalogs.map((catalog, index) => {
                         switch (catalog.content?.type) {
                             case 'Ready': {
                                 return (

@@ -18,8 +18,8 @@ android {
         applicationId "il.cinematic.stremio"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 34
-        versionName "2.5.5"
+        versionCode 35
+        versionName "2.6.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             // Target physical Android TV and tablet hardware.

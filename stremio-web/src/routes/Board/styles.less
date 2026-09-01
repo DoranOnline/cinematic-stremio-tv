@@ -28,15 +28,79 @@
             padding: 0 1rem;
             overflow-y: auto;
 
+            .spotlight-grid {
+                display: grid;
+                grid-template-columns: minmax(0, 2.15fr) minmax(13rem, 0.85fr);
+                grid-template-rows: repeat(3, minmax(0, 1fr));
+                gap: 0.7rem;
+                min-height: clamp(20rem, 43vh, 32rem);
+                margin: 1.25rem 1rem 2.5rem;
+            }
+
             .cinematic-spotlight, .spotlight-placeholder {
                 position: relative;
                 min-height: clamp(20rem, 43vh, 32rem);
-                margin: 1.25rem 1rem 2.5rem;
                 border: 1px solid rgba(255, 255, 255, 0.1);
                 border-radius: 1.6rem;
                 background: #121925;
                 overflow: hidden;
                 isolation: isolate;
+            }
+
+            .cinematic-spotlight {
+                grid-row: 1 / -1;
+            }
+
+            .spotlight-placeholder {
+                margin: 1.25rem 1rem 2.5rem;
+            }
+
+            .spotlight-secondary {
+                position: relative;
+                min-width: 0;
+                min-height: 0;
+                overflow: hidden;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 1rem;
+                background: #121925;
+            }
+
+            .spotlight-secondary-art {
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .spotlight-secondary::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(0deg, rgba(5, 7, 11, 0.92), transparent 70%);
+            }
+
+            .spotlight-secondary-name {
+                position: absolute;
+                right: 1rem;
+                bottom: 0.75rem;
+                left: 1rem;
+                z-index: 1;
+                overflow: hidden;
+                color: #fff;
+                font-size: 0.86rem;
+                font-weight: 780;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .spotlight-secondary:focus {
+                z-index: 3;
+                outline: 0.18rem solid #fff;
+                outline-offset: 0.18rem;
+                border-color: var(--cinema-red);
+                box-shadow: 0 0 0 0.42rem rgba(240, 45, 98, 0.7), 0 1rem 2rem rgba(0, 0, 0, 0.65);
+                transform: scale(1.025);
             }
 
             .spotlight-art {
@@ -75,7 +139,6 @@
                 font-weight: 850;
                 letter-spacing: 0.24em;
 
-                &::before { content: 'TONIGHT ON NUVYRO'; }
             }
 
             .spotlight-title {
@@ -110,8 +173,6 @@
                 background: #fff8ed;
                 font-weight: 850;
                 letter-spacing: 0.08em;
-
-                span::before { content: 'EXPLORE'; }
 
                 &:hover, &:focus, &:global(.selected) {
                     outline: 0.2rem solid #fff8ed;
@@ -352,6 +413,20 @@
     .board-container {
         .board-warning-container {
             left: calc(var(--safe-area-inset-left) + var(--vertical-nav-bar-size) + 0.5rem);
+        }
+    }
+}
+
+@media only screen and (max-width: @small) {
+    .board-container .board-content-container .board-content {
+        .spotlight-grid {
+            display: block;
+            min-height: 20rem;
+            margin: 0.75rem 0.25rem 1.5rem;
+        }
+
+        .spotlight-secondary {
+            display: none;
         }
     }
 }

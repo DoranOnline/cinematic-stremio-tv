@@ -91,6 +91,21 @@ const App = () => {
 
     React.useEffect(() => {
         const onNativeBackRequest = (event) => {
+            const openOverlay = document.querySelector(
+                '[class*="nav-menu-container"], [class*="menu-container"][role="menu"], [role="dialog"]'
+            );
+            if (openOverlay) {
+                event.preventDefault();
+                document.dispatchEvent(new KeyboardEvent('keydown', {
+                    key: 'Escape',
+                    code: 'Escape',
+                    keyCode: 27,
+                    which: 27,
+                    bubbles: true,
+                    cancelable: true
+                }));
+                return;
+            }
             const route = window.location.hash.slice(1) || '/';
             if (route === '/' || route === '') return;
             event.preventDefault();

@@ -25,6 +25,11 @@ const HorizontalNavBar = React.memo(({ className, route, query, title, backButto
         }
     }, [originPath, navigate]);
     const [fullscreen, requestFullscreen, exitFullscreen, , supported] = useFullscreen();
+    const [clock, setClock] = React.useState(() => new Date());
+    React.useEffect(() => {
+        const timer = window.setInterval(() => setClock(new Date()), 30000);
+        return () => window.clearInterval(timer);
+    }, []);
     const renderNavMenuLabel = React.useCallback(({ ref, className, onClick, children, }) => (
         <Button ref={ref} className={classnames(className, styles['button-container'], styles['menu-button-container'])} title={t('USER_PANEL')} tabIndex={0} onClick={onClick}>
             <Icon className={styles['icon']} name={'person-outline'} />
@@ -58,6 +63,9 @@ const HorizontalNavBar = React.memo(({ className, route, query, title, backButto
                     null
             }
             <div className={styles['buttons-container']}>
+                <time className={styles['clock']} dateTime={clock.toISOString()}>
+                    {clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </time>
                 {
                     hdrInfo && (hdrInfo.gamma === 'pq' || hdrInfo.gamma === 'hlg') ?
                         <div className={styles['hdr-indicator']} title={hdrInfo.gamma === 'pq' ? 'HDR10' : 'HLG'}>

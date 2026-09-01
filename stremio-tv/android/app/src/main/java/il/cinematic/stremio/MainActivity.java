@@ -134,17 +134,13 @@ public class MainActivity extends BridgeActivity {
         final WebView webView = getBridge().getWebView();
         final String url = webView.getUrl();
         Log.i("CinematicBack", "Back requested at " + url);
-        if (url != null && url.contains("#/") && !url.endsWith("#/")) {
-            final String script =
-                "(function(){var e=new CustomEvent('" +
-                WebNativeBridgeContract.EVENT_NATIVE_BACK_REQUEST +
-                "',{cancelable:true});window.dispatchEvent(e);return e.defaultPrevented;})()";
-            webView.evaluateJavascript(script, handled -> {
-                if (!"true".equals(handled)) showExitConfirmation();
-            });
-            return;
-        }
-        showExitConfirmation();
+        final String script =
+            "(function(){var e=new CustomEvent('" +
+            WebNativeBridgeContract.EVENT_NATIVE_BACK_REQUEST +
+            "',{cancelable:true});window.dispatchEvent(e);return e.defaultPrevented;})()";
+        webView.evaluateJavascript(script, handled -> {
+            if (!"true".equals(handled)) showExitConfirmation();
+        });
     }
 
     private void showExitConfirmation() {

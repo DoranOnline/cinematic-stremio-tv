@@ -27,6 +27,8 @@ const NavMenuContent = ({ onClick }) => {
     const toast = useToast();
     const [fullscreen, requestFullscreen, exitFullscreen, , supported] = useFullscreen();
     const [, isAndroidPWA] = usePWA();
+    const isNativeTV = typeof window.CinematicAndroid?.openNativePlayer === 'function' ||
+        (typeof window.Capacitor?.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
     const streamingServerWarningDismissed = React.useMemo(() => {
         return streamingServer.settings !== null && streamingServer.settings.type === 'Ready' || (
             !isNaN(profile.settings.streamingServerWarningDismissed.getTime()) &&
@@ -87,7 +89,7 @@ const NavMenuContent = ({ onClick }) => {
                 </div>
             </div>
             {
-                supported && !isAndroidPWA ?
+                supported && !isAndroidPWA && !isNativeTV ?
                     <div className={styles['nav-menu-section']}>
                         <Button className={styles['nav-menu-option-container']} title={fullscreen ? t('EXIT_FULLSCREEN') : t('ENTER_FULLSCREEN')} onClick={fullscreen ? exitFullscreen : requestFullscreen}>
                             <Icon className={styles['icon']} name={fullscreen ? 'minimize' : 'maximize'} />
@@ -106,16 +108,16 @@ const NavMenuContent = ({ onClick }) => {
                     <Icon className={styles['icon']} name={'addons-outline'} />
                     <div className={styles['nav-menu-option-label']}>{ t('ADDONS') }</div>
                 </Button>
-                <Button className={styles['nav-menu-option-container']} title={ t('PLAY_URL_MAGNET_LINK') } onClick={onPlayMagnetLinkClick}>
+                {!isNativeTV && <Button className={styles['nav-menu-option-container']} title={ t('PLAY_URL_MAGNET_LINK') } onClick={onPlayMagnetLinkClick}>
                     <Icon className={styles['icon']} name={'magnet-link'} />
                     <div className={styles['nav-menu-option-label']}>{ t('PLAY_URL_MAGNET_LINK') }</div>
-                </Button>
-                <Button className={styles['nav-menu-option-container']} title={ t('HELP_FEEDBACK') } href={'https://stremio.zendesk.com/'} target={'_blank'}>
+                </Button>}
+                {!isNativeTV && <Button className={styles['nav-menu-option-container']} title={ t('HELP_FEEDBACK') } href={'https://stremio.zendesk.com/'} target={'_blank'}>
                     <Icon className={styles['icon']} name={'help'} />
                     <div className={styles['nav-menu-option-label']}>{ t('HELP_FEEDBACK') }</div>
-                </Button>
+                </Button>}
             </div>
-            <div className={styles['nav-menu-section']}>
+            {!isNativeTV && <div className={styles['nav-menu-section']}>
                 <Button className={styles['nav-menu-option-container']} title={ t('TERMS_OF_SERVICE') } href={'https://www.stremio.com/tos'} target={'_blank'}>
                     <div className={styles['nav-menu-option-label']}>{ t('TERMS_OF_SERVICE') }</div>
                 </Button>
@@ -130,7 +132,7 @@ const NavMenuContent = ({ onClick }) => {
                         :
                         null
                 }
-            </div>
+            </div>}
         </div>
     );
 };
