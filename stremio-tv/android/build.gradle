@@ -22,6 +22,13 @@ allprojects {
         google()
         mavenCentral()
     }
+    configurations.configureEach {
+        // Kotlin 1.8+ already contains the old jdk7/jdk8 extensions. Exclude
+        // the legacy jars for every module, including generated Capacitor
+        // modules, so connected Android tests can actually be packaged.
+        exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk7"
+        exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk8"
+    }
 }
 
 task clean(type: Delete) {

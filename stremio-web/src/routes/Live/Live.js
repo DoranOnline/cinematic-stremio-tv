@@ -8,7 +8,7 @@ const { default: Icon } = require('@stremio/stremio-icons/react');
 const { withCoreSuspender } = require('stremio/common');
 const { default: getMetaDetailsHref } = require('stremio/common/getMetaDetailsHref');
 const useBoard = require('../Board/useBoard');
-const { getLiveCategories, channelMatchesCategory, getProgramLabel } = require('./liveChannels');
+const { getLiveCategories, channelMatchesCategory, getProgramLabel, collectLiveChannels } = require('./liveChannels');
 const styles = require('./styles');
 
 const FAVORITES_KEY = 'nuvyro.liveFavorites';
@@ -55,7 +55,7 @@ const Live = () => {
         connecting: 'מרעננים את רשימת הערוצים…',
         live: 'בשידור חי',
         emptyTitle: 'אין עדיין ערוצי Live',
-        emptyCopy: 'התקן תוסף חוקי שתומך בקטלוג TV או Channel והוא יופיע כאן אוטומטית.',
+        emptyCopy: 'התקן תוסף חוקי שמספק קטלוג TV חי והוא יופיע כאן אוטומטית. סרטוני YouTube לא מוצגים כערוצי טלוויזיה.',
         noMatches: 'אין ערוצים בתצוגה הזאת עדיין'
     }) : ({
         title: 'Live TV',
@@ -72,7 +72,7 @@ const Live = () => {
         connecting: 'Refreshing your channel list…',
         live: 'Live now',
         emptyTitle: 'No Live channels yet',
-        emptyCopy: 'Install a legal add-on with a TV or Channel catalog and it will appear here automatically.',
+        emptyCopy: 'Install a legal add-on with a live TV catalog and it will appear here automatically. YouTube videos are not shown as TV channels.',
         noMatches: 'There are no channels in this view yet'
     }), [i18n.resolvedLanguage, i18n.language]);
 
@@ -93,21 +93,7 @@ const Live = () => {
     }, [refreshBoard]);
 
     const channels = React.useMemo(() => {
-        const seen = new Set();
-        return (board.catalogs || [])
-            .filter((catalog) => catalog.content?.type === 'Ready')
-            .flatMap((catalog) => {
-                const catalogType = String(catalog.type || '').toLowerCase();
-                return catalog.content.content
-                    .filter((item) => ['tv', 'channel'].includes(String(item.type || catalogType).toLowerCase()))
-                    .map((item) => ({ ...item, catalogName: catalog.name || catalog.label || '' }));
-            })
-            .filter((item) => {
-                const key = item.id || item.name;
-                if (!key || seen.has(key)) return false;
-                seen.add(key);
-                return true;
-            });
+        return collectLiveChannels(board.catalogs || []);
     }, [board.catalogs]);
 
     const visibleChannels = React.useMemo(() => {

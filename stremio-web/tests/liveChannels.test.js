@@ -1,4 +1,4 @@
-const { getChannelCategories, getLiveCategories, channelMatchesCategory, getProgramLabel } = require('../src/routes/Live/liveChannels');
+const { getChannelCategories, getLiveCategories, channelMatchesCategory, getProgramLabel, collectLiveChannels } = require('../src/routes/Live/liveChannels');
 
 describe('live channel presentation', () => {
     const channels = [
@@ -17,5 +17,29 @@ describe('live channel presentation', () => {
         expect(getProgramLabel(channels[1])).toBe('Live match');
         expect(getProgramLabel(channels[0])).toBe('');
         expect(getProgramLabel({})).toBe('');
+    });
+
+    test('keeps explicit TV catalogs and removes YouTube or generic channel catalogs', () => {
+        const catalogs = [
+            {
+                name: 'Israel Live TV',
+                type: 'tv',
+                content: { type: 'Ready', content: [{ id: 'tv:one', name: 'News', type: 'tv' }] }
+            },
+            {
+                name: 'YouTube',
+                type: 'channel',
+                content: { type: 'Ready', content: [{ id: 'yt:one', name: 'Creator', type: 'channel' }] }
+            },
+            {
+                name: 'Video channels',
+                type: 'channel',
+                content: { type: 'Ready', content: [{ id: 'video:one', name: 'Playlist', type: 'channel' }] }
+            }
+        ];
+
+        expect(collectLiveChannels(catalogs)).toEqual([
+            expect.objectContaining({ id: 'tv:one', catalogName: 'Israel Live TV' })
+        ]);
     });
 });

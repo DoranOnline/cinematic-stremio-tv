@@ -40,6 +40,9 @@ final class EmbeddedStreamingServer {
                     cacheDir.getAbsolutePath(),
                     PORT
                 );
+                if (baseUrl == null || baseUrl.isEmpty()) {
+                    throw new IllegalStateException("Native stream server returned no URL");
+                }
                 ready = waitUntilReachable(baseUrl, 8_000L);
                 Log.i(TAG, ready ? "READY " + baseUrl : "FAILED health check " + baseUrl);
             } catch (Throwable error) {

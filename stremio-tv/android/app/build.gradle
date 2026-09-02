@@ -1,5 +1,9 @@
 apply plugin: 'com.android.application'
 
+def nuvyroTargetAbis = project.hasProperty("nuvyroQaX86") ?
+    ["arm64-v8a", "armeabi-v7a", "x86_64"] :
+    ["arm64-v8a", "armeabi-v7a"]
+
 android {
     namespace = "il.cinematic.stremio"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -18,12 +22,12 @@ android {
         applicationId "il.cinematic.stremio"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 35
-        versionName "2.6.0"
+        versionCode 36
+        versionName "2.6.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             // Target physical Android TV and tablet hardware.
-            abiFilters "arm64-v8a", "armeabi-v7a"
+            abiFilters(*nuvyroTargetAbis)
         }
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
