@@ -123,9 +123,6 @@ const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, 
         }
 
         if (usesCinematicPlayer) {
-            event.preventDefault();
-            event.stopPropagation();
-
             document.querySelectorAll('[data-cinematic-return-focus]')
                 .forEach((element) => element.removeAttribute('data-cinematic-return-focus'));
             if (event.currentTarget instanceof HTMLElement) {
@@ -133,14 +130,16 @@ const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, 
             }
 
             if (typeof streamLink !== 'string' || streamLink.length === 0) {
-                window.dispatchEvent(new CustomEvent('nuvyro-smart-play-failed'));
-                toast.show({
-                    type: 'error',
-                    title: 'המקור עדיין לא מוכן לניגון',
-                    timeout: 4000
-                });
+                // Torrent add-ons can expose a magnet before the embedded
+                // server has produced its local HTTP URL. Let the normal
+                // Stremio player route resolve it instead of swallowing the
+                // click and pretending no source exists.
+                markVideoAsWatched();
                 return;
             }
+
+            event.preventDefault();
+            event.stopPropagation();
 
             const title = name || description || addonName || 'NUVYRO';
             const opened = typeof nativePlayback.openNativePlayerSessionV2 === 'function' ?

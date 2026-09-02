@@ -19,10 +19,25 @@ describe('stream source availability', () => {
         expect(hasPlayableStreams([{ name: 'metadata only' }])).toBe(false);
     });
 
+    test('keeps torrent streams while their local HTTP URL is being prepared', () => {
+        const torrent = {
+            deepLinks: {
+                player: '#/player/series/example',
+                externalPlayer: {
+                    magnet: 'magnet:?xt=urn:btih:0123456789abcdef'
+                }
+            }
+        };
+
+        expect(isPlayableStream(torrent)).toBe(true);
+        expect(hasPlayableStreams([torrent])).toBe(true);
+    });
+
     test('rejects actions and non-video deep links from the provider menu', () => {
         expect(isPlayableStream({
             deepLinks: { externalPlayer: { streaming: 'stremio:///detail/movie/example' } }
         })).toBe(false);
         expect(isPlayableStream({ externalUrl: 'https://example.com/watch' })).toBe(false);
+        expect(isPlayableStream({ deepLinks: { player: '#/player/not-a-resolved-stream' } })).toBe(false);
     });
 });
