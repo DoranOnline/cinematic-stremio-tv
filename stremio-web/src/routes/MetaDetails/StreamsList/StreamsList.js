@@ -18,7 +18,6 @@ const { hasPlayableStreams, isPlayableStream } = require('./streamAvailability')
 
 const ALL_ADDONS_KEY = 'ALL';
 const PREFERRED_ADDONS_KEY = 'cinematic.preferredAddons';
-const SMART_PLAY_BRAND = ['NUVYRO', 'SMART', 'PLAY'].join(' ');
 
 const loadPreferredAddons = () => {
     try {
@@ -38,7 +37,6 @@ const StreamsList = ({ className, video, metaId, type, onEpisodeSearch, ...props
     const streamsContainerRef = React.useRef(null);
     const [selectedAddon, setSelectedAddon] = React.useState(ALL_ADDONS_KEY);
     const [preferredAddons, setPreferredAddons] = React.useState(loadPreferredAddons);
-    const [smartPlayActive, setSmartPlayActive] = React.useState(false);
     const rememberAddon = React.useCallback((addonName) => {
         setPreferredAddons((current) => {
             const next = [addonName, ...current.filter((name) => name !== addonName)].slice(0, 8);
@@ -126,45 +124,14 @@ const StreamsList = ({ className, video, metaId, type, onEpisodeSearch, ...props
         .slice(0, 12), [filteredStreams]);
 
     React.useEffect(() => {
-        if (!video) return;
-        let pendingVideoId = null;
-        try {
-            pendingVideoId = sessionStorage.getItem('nuvyro.autoplayVideoId');
-        } catch (_) {
-            return;
-        }
-        if (!pendingVideoId || (pendingVideoId !== 'next' && pendingVideoId !== video.id)) return;
-        setSmartPlayActive(true);
-    }, [video]);
-    React.useEffect(() => {
-        if (!smartPlayActive || filteredStreams.length === 0) return;
-        sessionStorage.removeItem('nuvyro.autoplayVideoId');
-        const timer = window.setTimeout(() => {
-            const firstSource = streamsContainerRef.current?.querySelector('[data-nuvyro-stream="true"]');
-            if (firstSource instanceof HTMLElement) {
-                firstSource.focus({ preventScroll: false });
-                firstSource.click();
-            }
-        }, 350);
-        return () => window.clearTimeout(timer);
-    }, [smartPlayActive, filteredStreams]);
-    React.useEffect(() => {
-        const handleSmartPlayFailure = () => setSmartPlayActive(false);
-        window.addEventListener('nuvyro-smart-play-failed', handleSmartPlayFailure);
-        return () => window.removeEventListener('nuvyro-smart-play-failed', handleSmartPlayFailure);
-    }, []);
-    const showAllSources = React.useCallback(() => {
+        // Source choice is always explicit. Clear requests left by older
+        // releases so opening an episode never auto-clicks a slow source.
         try {
             sessionStorage.removeItem('nuvyro.autoplayVideoId');
         } catch (_) {
-            // The source list remains usable even when storage is unavailable.
+            // Manual source selection remains usable without session storage.
         }
-        setSmartPlayActive(false);
-        window.setTimeout(() => {
-            const firstSource = streamsContainerRef.current?.querySelector('[data-nuvyro-stream="true"]');
-            if (firstSource instanceof HTMLElement) firstSource.focus({ preventScroll: false });
-        }, 50);
-    }, []);
+    }, [video?.id]);
     const selectableOptions = React.useMemo(() => {
         return {
             options: [
@@ -202,23 +169,6 @@ const StreamsList = ({ className, video, metaId, type, onEpisodeSearch, ...props
 
     return (
         <div className={classnames(className, styles['streams-list-container'])}>
-            {
-                smartPlayActive ?
-                    <div className={styles['smart-play-panel']} role={'status'}>
-                        <div className={styles['smart-play-orbit']} aria-hidden={'true'} />
-                        <div className={styles['smart-play-kicker']}>{SMART_PLAY_BRAND}</div>
-                        <div className={styles['smart-play-title']}>
-                            {i18n.resolvedLanguage?.startsWith('he') ? 'מכינים את הפרק…' : 'Preparing your episode…'}
-                        </div>
-                        <div className={styles['smart-play-copy']}>
-                            {i18n.resolvedLanguage?.startsWith('he') ? 'בוחרים אוטומטית את המקור המהיר והאמין ביותר' : 'Automatically choosing the fastest reliable source'}
-                        </div>
-                        <Button className={styles['smart-play-more']} onClick={showAllSources}>
-                            {i18n.resolvedLanguage?.startsWith('he') ? 'מקורות נוספים' : 'More sources'}
-                        </Button>
-                    </div>
-                    : null
-            }
             <div className={styles['select-choices-wrapper']}>
                 {
                     video ?
@@ -301,7 +251,7 @@ const StreamsList = ({ className, video, metaId, type, onEpisodeSearch, ...props
                             </div>
                             :
                             <React.Fragment>
-                                <div className={classnames(styles['streams-container'], { [styles['smart-play-hidden']]: smartPlayActive })} ref={streamsContainerRef}>
+                                <div className={styles['streams-container']} ref={streamsContainerRef}>
                                     {filteredStreams.map((stream, index) => (
                                         <Stream
                                             key={index}
