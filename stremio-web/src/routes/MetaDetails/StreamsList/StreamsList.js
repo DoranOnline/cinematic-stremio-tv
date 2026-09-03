@@ -14,7 +14,7 @@ const styles = require('./styles');
 const { usePlatform, useProfile } = require('stremio/common');
 const { default: SeasonEpisodePicker } = require('../EpisodePicker');
 const { rankSources } = require('./sourceIntelligence');
-const { hasPlayableStreams } = require('./streamAvailability');
+const { hasPlayableStreams, isPlayableStream } = require('./streamAvailability');
 
 const ALL_ADDONS_KEY = 'ALL';
 const PREFERRED_ADDONS_KEY = 'cinematic.preferredAddons';
@@ -77,7 +77,7 @@ const StreamsList = ({ className, video, metaId, type, onEpisodeSearch, ...props
             .reduce((streamsByAddon, streams) => {
                 streamsByAddon[streams.addon.transportUrl] = {
                     addon: streams.addon,
-                    streams: streams.content.content.map((stream) => ({
+                    streams: streams.content.content.filter(isPlayableStream).map((stream) => ({
                         ...stream,
                         onClick: () => {
                             rememberAddon(streams.addon.manifest.name);

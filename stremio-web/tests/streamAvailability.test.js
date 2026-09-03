@@ -33,6 +33,22 @@ describe('stream source availability', () => {
         expect(hasPlayableStreams([torrent])).toBe(true);
     });
 
+    test('keeps unresolved torrent streams represented by infoHash and fileIdx', () => {
+        const torrent = {
+            name: 'Torrent source',
+            infoHash: '0123456789abcdef0123456789abcdef01234567',
+            fileIdx: 0,
+            deepLinks: { player: '#/player/torrent-source' }
+        };
+
+        expect(isPlayableStream(torrent)).toBe(true);
+        expect(hasPlayableStreams([torrent])).toBe(true);
+    });
+
+    test('keeps direct HTTP streams before external-player links are generated', () => {
+        expect(isPlayableStream({ url: 'https://example.test/video.m3u8' })).toBe(true);
+    });
+
     test('rejects actions and non-video deep links from the provider menu', () => {
         expect(isPlayableStream({
             deepLinks: { externalPlayer: { streaming: 'stremio:///detail/movie/example' } }
