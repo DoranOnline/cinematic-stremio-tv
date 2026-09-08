@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import CoreContext from './CoreContext';
 import createTransport from './createTransport';
-import Error from './Error';
+import ErrorScreen from './Error';
 
 const transport = createTransport();
 const NATIVE_SERVER_WAIT_MS = 12_000;
+let transportInitialization: Promise<void> | null = null;
 
 const waitForNativeStreamingServer = async () => {
     const nativeBridge = (window as any).CinematicAndroid;
@@ -15,7 +16,20 @@ const waitForNativeStreamingServer = async () => {
         if (nativeBridge.isStreamingServerReady()) return;
         await new Promise((resolve) => window.setTimeout(resolve, 200));
     }
-    throw new Error('The local streaming server did not become ready in time');
+    throw new globalThis.Error('The local streaming server did not become ready in time');
+};
+
+const initializeTransport = (appInfo: object) => {
+    if (transportInitialization === null) {
+        transportInitialization = waitForNativeStreamingServer()
+            .then(() => transport.init(appInfo))
+            .catch((error) => {
+                // A failed attempt must not poison every later retry.
+                transportInitialization = null;
+                throw error;
+            });
+    }
+    return transportInitialization;
 };
 
 type Props = {
@@ -24,10 +38,9 @@ type Props = {
 };
 
 const Core = (props: Props) => {
-    const initialized = useRef(false);
     const [attempt, setAttempt] = useState(0);
     const [ready, setReady] = useState(false);
-    const [error, setError] = useState<Error | null>();
+    const [error, setError] = useState<globalThis.Error | null>();
 
     const stateListeners = useRef<CoreStateListener[]>([]);
     const eventListeners = useRef<CoreEventListener[]>([]);
@@ -46,8 +59,6 @@ const Core = (props: Props) => {
     };
 
     useEffect(() => {
-        if (initialized.current && attempt === 0) return;
-        initialized.current = true;
         let cancelled = false;
 
         const onCoreEvent = ({ name, args }: NewStateEvent | CoreEventEvent) => {
@@ -81,8 +92,7 @@ const Core = (props: Props) => {
             }
         };
 
-        waitForNativeStreamingServer()
-            .then(() => transport.init(props.appInfo))
+        initializeTransport(props.appInfo)
             .then(() => {
                 if (cancelled) return;
                 window.core = transport;
@@ -90,7 +100,7 @@ const Core = (props: Props) => {
                 setReady(true);
                 setError(null);
             })
-            .catch((e: Error) => {
+            .catch((e: globalThis.Error) => {
                 if (cancelled) return;
                 console.error('Failed to initialize core:', e);
                 setReady(false);
@@ -113,7 +123,7 @@ const Core = (props: Props) => {
 
     return (
         <CoreContext.Provider value={{ transport, on, off }}>
-            { error && !ready && <Error message={error.message} onRetry={retry} /> }
+            { error && !ready && <ErrorScreen message={error.message} onRetry={retry} /> }
             { ready && !error && props.children }
         </CoreContext.Provider>
     );
