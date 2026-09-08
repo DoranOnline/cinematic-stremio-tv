@@ -11,6 +11,7 @@ const { Button, Image, Popup } = require('stremio/components');
 const { default: useRouteFocused } = require('stremio/common/useRouteFocused');
 const StreamPlaceholder = require('./StreamPlaceholder');
 const { createMarkVideoAsWatchedAction } = require('./nativePlaybackSync');
+const { shouldOpenWithNativePlayer } = require('./playbackRouting');
 const styles = require('./styles');
 
 const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, bestMatch, name, description, thumbnail, progress, deepLinks, playbackSources, ...props }) => {
@@ -96,6 +97,7 @@ const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, 
     const streamLink = React.useMemo(() => {
         return deepLinks?.externalPlayer?.streaming;
     }, [deepLinks]);
+    const opensInNativePlayer = shouldOpenWithNativePlayer(usesCinematicPlayer, streamLink);
 
     const downloadLink = React.useMemo(() => {
         return deepLinks?.externalPlayer?.download;
@@ -122,20 +124,11 @@ const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, 
             props.onClick(event);
         }
 
-        if (usesCinematicPlayer) {
+        if (opensInNativePlayer) {
             document.querySelectorAll('[data-cinematic-return-focus]')
                 .forEach((element) => element.removeAttribute('data-cinematic-return-focus'));
             if (event.currentTarget instanceof HTMLElement) {
                 event.currentTarget.setAttribute('data-cinematic-return-focus', 'true');
-            }
-
-            if (typeof streamLink !== 'string' || streamLink.length === 0) {
-                // Torrent add-ons can expose a magnet before the embedded
-                // server has produced its local HTTP URL. Let the normal
-                // Stremio player route resolve it instead of swallowing the
-                // click and pretending no source exists.
-                markVideoAsWatched();
-                return;
             }
 
             event.preventDefault();
@@ -173,7 +166,7 @@ const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, 
             });
         }
 
-    }, [props.onClick, profile.settings, markVideoAsWatched, streamLink, videoId, metaId, name, description, addonName, playbackSources, nativePlayback, usesCinematicPlayer]);
+    }, [props.onClick, profile.settings, markVideoAsWatched, streamLink, videoId, metaId, name, description, addonName, playbackSources, nativePlayback, opensInNativePlayer]);
 
     const copyMagnetLink = React.useCallback((event) => {
         event.preventDefault();
@@ -247,7 +240,7 @@ const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, 
 
     const renderLabel = React.useMemo(() => function renderLabel({ className, children, ...props }) {
         return (
-            <Button data-nuvyro-stream={'true'} className={classnames(className, styles['stream-container'], { [styles['best-match']]: bestMatch })} title={addonName} href={usesCinematicPlayer ? null : href} target={usesCinematicPlayer ? null : target} download={usesCinematicPlayer ? null : download} onClick={onClick} {...props}>
+            <Button data-nuvyro-stream={'true'} className={classnames(className, styles['stream-container'], { [styles['best-match']]: bestMatch })} title={addonName} href={opensInNativePlayer ? null : href} target={opensInNativePlayer ? null : target} download={opensInNativePlayer ? null : download} onClick={onClick} {...props}>
                 <div className={styles['source-rank']}>
                     {bestMatch ? <span className={styles['best-label']} aria-hidden={'true'} /> : null}
                     <span className={styles['provider-label']}>{addonName}</span>
@@ -289,7 +282,7 @@ const Stream = ({ className, videoId, metaId, videoReleased, addonName, badges, 
                 {children}
             </Button>
         );
-    }, [thumbnail, progress, addonName, name, description, href, target, download, onClick, usesCinematicPlayer]);
+    }, [thumbnail, progress, addonName, name, description, href, target, download, onClick, opensInNativePlayer]);
 
     const renderMenu = React.useMemo(() => function renderMenu() {
         return (
